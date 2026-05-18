@@ -1,97 +1,95 @@
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ChevronLeft, BookOpen, Copy, CheckCircle2, BookmarkPlus } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { SaveVocabButton } from '@/components/SaveVocabButton'; // Import vào
+import { ChevronLeft, BookOpen, Settings2, CheckCircle2 } from 'lucide-react';
+import { SaveVocabButton } from '@/components/SaveVocabButton';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-export default async function LessonDetailPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function LessonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const lesson = await prisma.lesson.findUnique({ where: { id } });
+  
+  const session = await getServerSession(authOptions);
+  const isAdmin = (session?.user as any)?.role === 'ADMIN';
 
+  const lesson = await prisma.lesson.findUnique({ where: { id } });
   if (!lesson) notFound();
 
-  // MẸO SENIOR: Tự động tách nội dung thô thành danh sách để hiển thị đẹp hơn
-  // Tách theo dòng, sau đó mỗi dòng tách theo dấu ":"
   const items = lesson.content.split('\n').filter(line => line.trim() !== '').map(line => {
     const [word, ...meaningParts] = line.split(':');
     return {
-      word: word?.trim(),
-      meaning: meaningParts.join(':')?.trim() // Phòng trường hợp nghĩa có chứa dấu :
+      word: word?.trim() || "N/A",
+      meaning: meaningParts.join(':')?.trim() || "Chưa có nghĩa"
     };
   });
 
   return (
-    <main className="min-h-screen bg-[#F8F9FB] pb-20">
-      {/* Header xịn xò, dính trên đầu khi cuộn */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/vault" className="flex items-center text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors">
-            <ChevronLeft className="mr-1 h-4 w-4" /> Quay lại
+    // Đã xóa max-w-5xl, đổi thành w-full
+    <div className="w-full space-y-10 animate-in fade-in duration-500 pb-20">
+      
+      <div className="flex items-center justify-between text-sm text-zinc-500 mb-8">
+        <Link href="/vault" className="flex items-center gap-1 hover:text-zinc-900 transition-colors">
+          <ChevronLeft className="w-4 h-4" /> Quay lại kho
+        </Link>
+        
+        {isAdmin && (
+          <Link href={`/admin/edit-lesson/${id}`} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+            <Settings2 className="w-4 h-4" /> Edit page
           </Link>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="icon"><BookmarkPlus className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon"><Copy className="h-5 w-5" /></Button>
-          </div>
-        </div>
+        )}
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 mt-8">
-        {/* Tiêu đề và thông tin chung */}
-        <div className="mb-10 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
-            <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-bold rounded-full tracking-wider uppercase">
-              {lesson.type}
-            </span>
-            <span className="text-zinc-400 text-xs font-medium uppercase tracking-widest">
-              {lesson.category}
-            </span>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-black text-zinc-900 mb-4 tracking-tight">
-            {lesson.title}
-          </h1>
-          <div className="h-1.5 w-20 bg-blue-600 rounded-full mx-auto md:mx-0"></div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-5xl">📖</span>
+          <span className="px-2 py-1 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded uppercase tracking-wider">
+            {lesson.type} • {lesson.category}
+          </span>
         </div>
+        <h1 className="text-5xl font-bold text-zinc-900 leading-tight">
+          {lesson.title}
+        </h1>
+        <p className="text-zinc-400 flex items-center gap-2 border-b border-notion-border pb-6">
+          <BookOpen className="w-4 h-4" /> {items.length} từ vựng
+        </p>
+      </div>
 
-        {/* Danh sách nội dung đã được xử lý thành Card */}
-        <div className="space-y-4">
-          {items.map((item, index) => (
-            <Card key={index} className="group hover:border-blue-400 transition-all duration-300 shadow-sm hover:shadow-md border-zinc-200/60">
-              <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row md:items-center">
-                  {/* Cột từ tiếng Anh */}
-                  <div className="p-5 md:w-1/3 bg-zinc-50/50 group-hover:bg-blue-50/50 transition-colors border-b md:border-b-0 md:border-r border-zinc-100">
-                    <span className="text-xs font-bold text-zinc-400 block mb-1"># {index + 1}</span>
-                    <h3 className="text-lg font-bold text-blue-700 leading-tight">
-                      {item.word}
-                    </h3>
-                  </div>
-                  
-                  {/* Cột nghĩa tiếng Việt */}
-                  <div className="p-5 md:w-2/3 flex justify-between items-center">
-                    <p className="text-zinc-700 font-medium leading-relaxed">
-                      {item.meaning}
-                    </p>
-                      <SaveVocabButton word={item.word} meaning={item.meaning} />
-                  </div>
+      {/* ĐÂY: Thêm xl:grid-cols-4 và 2xl:grid-cols-5 để nó tự nở rộng ra */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+        {items.map((item, index) => (
+          <div 
+            key={index} 
+            className="group relative flex flex-col justify-between p-5 rounded-xl border border-notion-border bg-white hover:border-zinc-300 hover:shadow-sm transition-all h-full"
+          >
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  Term #{index + 1}
+                </span>
+                
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity -mt-2 -mr-2">
+                  <SaveVocabButton word={item.word} meaning={item.meaning} />
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Nút hoàn thành ở cuối trang */}
-        <div className="mt-12 text-center">
-          <Button size="lg" className="px-12 py-6 rounded-full text-lg font-bold shadow-xl hover:scale-105 transition-transform">
-            <BookOpen className="mr-2 h-5 w-5" /> Đã học xong bài này
-          </Button>
-        </div>
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900 mb-4">
+                {item.word}
+              </h3>
+            </div>
+            
+            <div className="border-t border-notion-border pt-3 mt-auto">
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                {item.meaning}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
-    </main>
+
+      <div className="pt-10 border-t border-notion-border">
+        <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-md text-sm font-medium hover:bg-zinc-800 transition-colors">
+          <CheckCircle2 className="w-4 h-4" /> Đánh dấu đã học
+        </button>
+      </div>
+    </div>
   );
 }

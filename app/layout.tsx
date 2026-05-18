@@ -1,34 +1,26 @@
-import type { Metadata } from "next";
-import { Inter, Lora } from "next/font/google"; // Thay đổi ở đây
+import { Sidebar } from "@/components/Sidebar";
+import { Providers } from "./providers";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "English Mastery Hub",
-  description: "Học tiếng Anh cùng anh em nhà Khánh",
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode; // PHẢI CÓ DÒNG NÀY
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-full flex flex-col`}>
-        <Providers>{children}</Providers>
-        <Toaster position="top-center" richColors /> 
+    <html lang="en">
+      <body className="flex h-screen overflow-hidden bg-[#ffffff]">
+        <Providers>
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto relative">
+            <div className="h-12 flex items-center px-8 text-sm text-zinc-400 border-b border-notion-border">
+              <span>English Mastery Hub</span>
+            </div>
+            
+            {/* ĐÂY, ĐÃ XÓA GIỚI HẠN CHIỀU RỘNG, ĐỂ NÓ FULL 100% (w-full) */}
+            <div className="w-full px-8 md:px-12 py-10">
+              {children}
+            </div>
+          </main>
+        </Providers>
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
-'use client';
-
-import { createLesson } from '@/lib/actions';
+import { prisma } from '@/lib/prisma';
+import { notFound } from 'next/navigation';
+import { updateLesson } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
@@ -10,41 +10,49 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Plus, Info } from 'lucide-react';
+import { ChevronLeft, Save, Info } from 'lucide-react';
 
-export default function AddLessonPage() {
-  const [lessonType, setLessonType] = useState('');
+export default async function EditLessonPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params;
+  const lesson = await prisma.lesson.findUnique({
+    where: { id }
+  });
+
+  if (!lesson) notFound();
+
+  const updateLessonWithId = updateLesson.bind(null, id);
 
   return (
     <div className="max-w-3xl space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* Header Navigation */}
       <div className="flex items-center justify-between text-sm text-zinc-500 mb-8">
-        <Link href="/vault" className="flex items-center gap-1 hover:text-zinc-900 transition-colors">
-          <ChevronLeft className="w-4 h-4" /> Quay lại kho
+        <Link href={`/lessons/${id}`} className="flex items-center gap-1 hover:text-zinc-900 transition-colors">
+          <ChevronLeft className="w-4 h-4" /> Quay lại bài học
         </Link>
       </div>
 
       <div className="space-y-2 border-b border-notion-border pb-6">
         <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
-          <span className="text-4xl">📄</span> Thêm bài học mới
+          <span className="text-4xl">📝</span> Chỉnh sửa bài học
         </h1>
-        <p className="text-zinc-500 font-medium text-sm">
-          Tạo tài liệu mới cho The Vault.
+        <p className="text-zinc-500 font-medium text-sm flex items-center gap-2">
+          ID: <span className="font-mono bg-zinc-100 px-2 py-0.5 rounded text-xs">{id}</span>
         </p>
       </div>
 
-      <form action={createLesson} className="space-y-6">
-        <input type="hidden" name="type" value={lessonType} />
-
+      <form action={updateLessonWithId} className="space-y-6">
         {/* Tiêu đề */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tiêu đề bài học</label>
           <Input 
             name="title" 
-            placeholder="VD: 50 Idioms thông dụng..." 
+            defaultValue={lesson.title} 
             className="h-12 border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md text-lg font-medium" 
             required 
           />
@@ -54,9 +62,9 @@ export default function AddLessonPage() {
           {/* Loại bài học */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Loại</label>
-            <Select onValueChange={setLessonType} required>
+            <Select name="type" defaultValue={lesson.type}>
               <SelectTrigger className="h-12 border-notion-border focus:ring-1 focus:ring-zinc-300 rounded-md bg-transparent">
-                <SelectValue placeholder="Chọn loại..." />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="IELTS">IELTS</SelectItem>
@@ -70,7 +78,7 @@ export default function AddLessonPage() {
             <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Phân mục</label>
             <Input 
               name="category" 
-              placeholder="VD: Idioms, Vocab..." 
+              defaultValue={lesson.category} 
               className="h-12 border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md" 
               required 
             />
@@ -87,7 +95,7 @@ export default function AddLessonPage() {
           </div>
           <Textarea 
             name="content" 
-            placeholder="favorable : thuận lợi&#10;advocate : biện hộ&#10;..." 
+            defaultValue={lesson.content} 
             rows={20} 
             className="border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md p-4 font-mono text-sm leading-relaxed bg-[#fbfbfa] resize-y" 
             required 
@@ -97,7 +105,7 @@ export default function AddLessonPage() {
         {/* Nút lưu */}
         <div className="pt-6 border-t border-notion-border">
           <button type="submit" className="flex items-center justify-center gap-2 w-full h-12 bg-zinc-900 text-white rounded-md text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm">
-            <Plus className="w-4 h-4" /> Đăng bài học
+            <Save className="w-4 h-4" /> Lưu thay đổi
           </button>
         </div>
       </form>
