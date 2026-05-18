@@ -6,8 +6,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+// ... các model User, Lesson, Vocabulary giữ nguyên bên dưới
 
 // ==========================================
 // THIẾT KẾ CÁC BẢNG (TABLES)
