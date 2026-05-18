@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
   "dev": "next dev",
-  "build": "npx prisma generate && next build",
+  "build": "prisma generate && next build",
   "start": "next start",
   "lint": "next lint"
-  },
+},
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
