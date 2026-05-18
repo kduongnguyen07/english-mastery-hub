@@ -15,7 +15,7 @@ import {
   Library,
   ArrowRight
 } from 'lucide-react';
-import { saveVocabulary, searchLocalVault } from '@/lib/actions';
+import { saveVocabulary, searchLocalVault } from '../../lib/actions';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react'; 
 import Link from 'next/link';
