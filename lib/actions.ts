@@ -59,3 +59,21 @@ export async function searchLocalVault(query: string) {
     return { id: lesson.id, title: lesson.title, matchedContent: matchedLine || lesson.title, type: lesson.type };
   });
 }
+/**
+ * Cập nhật nội dung bài học đã có.
+ */
+export async function updateLesson(id: string, formData: FormData) {
+  const title = formData.get('title') as string;
+  const content = formData.get('content') as string;
+  const type = formData.get('type') as 'IELTS' | 'HSG';
+  const category = formData.get('category') as string;
+
+  await prisma.lesson.update({
+    where: { id },
+    data: { title, content, type, category },
+  });
+
+  revalidatePath(`/lessons/${id}`);
+  revalidatePath('/vault');
+  redirect(`/lessons/${id}`);
+}
