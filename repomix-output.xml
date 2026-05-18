@@ -46,6 +46,7 @@ AGENTS.md
 app/admin/add-lesson/page.tsx
 app/api/auth/[...nextauth]/route.ts
 app/api/setup/route.ts
+app/dictionary/page.tsx
 app/favicon.ico
 app/flashcards/page.tsx
 app/globals.css
@@ -54,9 +55,11 @@ app/lessons/[id]/page.tsx
 app/login/page.tsx
 app/page.tsx
 app/providers.tsx
+app/register/page.tsx
 app/vault/page.tsx
 CLAUDE.md
 components.json
+components/FlashcardItem.tsx
 components/SaveVocabButton.tsx
 components/ui/button.tsx
 components/ui/card.tsx
@@ -93,6 +96,14 @@ This section contains the contents of the repository's files.
   "printWidth": 80,
   "tabWidth": 2
 }
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+<!-- END:nextjs-agent-rules -->
 </file>
 
 <file path="app/admin/add-lesson/page.tsx">
@@ -177,78 +188,46 @@ export default function AddLessonPage() {
 </file>
 
 <file path="app/api/auth/[...nextauth]/route.ts">
-import NextAuth from 'next-auth';
+import NextAuth, { NextAuthOptions } from 'next-auth'; // Thêm NextAuthOptions
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-
-
-const handler = NextAuth({
+// Xuất authOptions ra để dùng trong Server Actions
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: 'Tài khoản',
       credentials: {
-        email: { label: 'Email', type: 'email', placeholder: 'admin@gmail.com' },
+        email: { label: 'Email', type: 'email' },
         password: { label: 'Mật khẩu', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Vui lòng nhập email và mật khẩu');
-        }
-
-        // 1. Tìm user trong Database
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-
-        if (!user) {
-          throw new Error('Không tìm thấy tài khoản');
-        }
-
-        // 2. Kiểm tra mật khẩu
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
-          throw new Error('Mật khẩu không chính xác');
-        }
-
-        // 3. Đăng nhập thành công, trả về thông tin user
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        };
+        if (!credentials?.email || !credentials?.password) throw new Error('Thiếu thông tin');
+        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+        if (!user || !user.password) throw new Error('Sai tài khoản');
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+        if (!isValid) throw new Error('Sai mật khẩu');
+        return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
   ],
   callbacks: {
-    // Lưu role (quyền) vào token để dùng sau này
     async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as any).role;
-        token.id = user.id;
-      }
+      if (user) token.role = (user as any).role;
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
-      }
+      if (session.user) (session.user as any).role = token.role;
       return session;
     },
   },
-  pages: {
-    signIn: '/login', // Tí nữa mình sẽ tự làm trang Login cho đẹp
-  },
-  session: {
-    strategy: 'jwt',
-  },
+  pages: { signIn: '/login' },
+  session: { strategy: 'jwt' },
   secret: process.env.NEXTAUTH_SECRET,
-});
+};
 
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
 </file>
 
@@ -291,11 +270,15 @@ export async function GET() {
 <file path="app/flashcards/page.tsx">
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { Card, CardContent } from '@/components/ui/card';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { FlashcardItem } from '@/components/FlashcardItem';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ChevronLeft, Library, BrainCircuit } from 'lucide-react';
 
 export default async function FlashcardsPage() {
-  const session = await getServerSession();
-  if (!session) return <div className="p-20 text-center">Đăng nhập để xem Flashcards</div>;
+  const session = await getServerSession(authOptions);
+  if (!session) return <div className="p-20 text-center font-bold">Đăng nhập đi em trai!</div>;
 
   const vocabs = await prisma.vocabulary.findMany({
     where: { user: { email: session.user?.email! } },
@@ -303,20 +286,66 @@ export default async function FlashcardsPage() {
   });
 
   return (
-    <main className="min-h-screen bg-zinc-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-zinc-900">Từ vựng của tôi ({vocabs.length})</h1>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {vocabs.map((v) => (
-            <Card key={v.id} className="bg-white border-none shadow-sm overflow-hidden group">
-              <CardContent className="p-6">
-                <h3 className="text-xl font-bold text-blue-600 mb-2">{v.word}</h3>
-                <p className="text-zinc-600">{v.meaning}</p>
-              </CardContent>
-            </Card>
-          ))}
+    <main className="min-h-screen bg-[#FBFBFE] pb-20">
+      {/* Top Navigation */}
+      <div className="bg-white border-b border-zinc-100 sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-900">
+              <ChevronLeft className="mr-2 h-4 w-4" /> Trang chủ
+            </Button>
+          </Link>
+          <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
+            <BrainCircuit className="h-4 w-4 text-blue-600" />
+            <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Study Mode</span>
+          </div>
         </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 mt-12">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-zinc-900 rounded-lg">
+                <Library className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-4xl font-black text-zinc-900 tracking-tight">My Flashcards</h1>
+            </div>
+            <p className="text-zinc-500 font-medium">
+              Mày đang có <span className="text-blue-600 font-bold">{vocabs.length}</span> từ vựng cần ghi nhớ.
+            </p>
+          </div>
+          
+          <Link href="/vault">
+            <Button className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl px-6">
+              Lấy thêm từ mới
+            </Button>
+          </Link>
+        </div>
+        
+        {/* Grid Section */}
+        {vocabs.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {vocabs.map((v, index) => (
+              <FlashcardItem 
+                key={v.id} 
+                id={v.id}      // QUAN TRỌNG: Phải truyền ID vào đây
+                word={v.word} 
+                meaning={v.meaning} 
+                index={index} 
+            />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[40px] border-2 border-dashed border-zinc-100">
+            <div className="bg-zinc-50 p-6 rounded-full mb-6">
+              <Library className="h-12 w-12 text-zinc-200" />
+            </div>
+            <p className="text-zinc-400 font-bold text-xl">Kho từ vựng đang trống rỗng</p>
+            <p className="text-zinc-400 text-sm mt-2">Vào "The Vault" và bấm nút (+) để thêm từ nhé.</p>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -431,21 +460,23 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { GraduationCap, LockKeyhole } from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
 
-    // Gọi hàm signIn của NextAuth
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
     const res = await signIn('credentials', {
       redirect: false,
       email,
@@ -453,54 +484,49 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError(res.error);
+      toast.error("Sai email hoặc mật khẩu rồi!");
       setIsLoading(false);
     } else {
-      // Đăng nhập thành công, chuyển về trang chủ
+      toast.success("Chào mừng mày quay trở lại!");
       router.push('/');
       router.refresh();
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Đăng nhập</CardTitle>
-          <CardDescription>
-            Nhập email và mật khẩu để vào English Mastery Hub
-          </CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] p-4">
+      <Card className="w-full max-w-md border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[40px] p-4 bg-white">
+        <CardHeader className="text-center space-y-2">
+          <div className="mx-auto w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mb-2 shadow-lg">
+            <LockKeyhole className="h-10 w-10 text-white" />
+          </div>
+          <CardTitle className="text-3xl font-black text-zinc-900 tracking-tight">Đăng nhập</CardTitle>
+          <CardDescription className="font-medium">Tiếp tục hành trình học tập của mày.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Email</label>
-              <Input
-                type="email"
-                placeholder="admin@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Email</label>
+              <Input name="email" type="email" placeholder="admin@gmail.com" required className="h-12 rounded-2xl border-zinc-100 focus:ring-zinc-900" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700">Mật khẩu</label>
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Mật khẩu</label>
+              <Input name="password" type="password" placeholder="••••••••" required className="h-12 rounded-2xl border-zinc-100 focus:ring-zinc-900" />
             </div>
             
-            {/* Hiển thị lỗi nếu gõ sai pass */}
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
+            <Button type="submit" disabled={isLoading} className="w-full h-14 bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl font-bold text-lg shadow-xl transition-all active:scale-95">
+              {isLoading ? 'Đang kiểm tra...' : 'Vào hệ thống'}
             </Button>
           </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-zinc-500 text-sm font-medium">
+              Chưa có tài khoản?{' '}
+              <Link href="/register" className="text-blue-600 font-black hover:underline">
+                Đăng ký ngay
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -520,6 +546,72 @@ import { SessionProvider } from 'next-auth/react';
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   return <SessionProvider>{children}</SessionProvider>;
+}
+</file>
+
+<file path="app/register/page.tsx">
+'use client';
+
+import { registerUser } from '@/lib/actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { GraduationCap, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+
+export default function RegisterPage() {
+  const handleSubmit = async (formData: FormData) => {
+    try {
+      await registerUser(formData);
+      toast.success("Đăng ký thành công! Đăng nhập ngay nhé.");
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] p-4">
+      <Card className="w-full max-w-md border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[40px] p-4 bg-white">
+        <CardHeader className="text-center space-y-2">
+          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-blue-200">
+            <GraduationCap className="h-10 w-10 text-white" />
+          </div>
+          <CardTitle className="text-3xl font-black text-zinc-900 tracking-tight">Tạo tài khoản</CardTitle>
+          <CardDescription className="font-medium">Bắt đầu hành trình chinh phục IELTS cùng EMH.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Họ và tên</label>
+              <Input name="name" placeholder="VD: Nguyễn Văn Em" required className="h-12 rounded-2xl border-zinc-100 focus:ring-blue-600" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Email</label>
+              <Input name="email" type="email" placeholder="emtrai@gmail.com" required className="h-12 rounded-2xl border-zinc-100 focus:ring-blue-600" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Mật khẩu</label>
+              <Input name="password" type="password" placeholder="••••••••" required className="h-12 rounded-2xl border-zinc-100 focus:ring-blue-600" />
+            </div>
+            
+            <Button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-100 transition-all active:scale-95">
+              Đăng ký ngay <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-zinc-500 text-sm font-medium">
+              Đã có tài khoản rồi?{' '}
+              <Link href="/login" className="text-blue-600 font-black hover:underline">
+                Đăng nhập
+              </Link>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 </file>
 
@@ -591,6 +683,10 @@ export default async function VaultPage() {
 }
 </file>
 
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
 <file path="components.json">
 {
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -616,6 +712,96 @@ export default async function VaultPage() {
   "menuColor": "default",
   "menuAccent": "subtle",
   "registries": {}
+}
+</file>
+
+<file path="components/FlashcardItem.tsx">
+'use client';
+
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // QUAN TRỌNG: Phải có dòng này
+import { cn } from '@/lib/utils';
+import { Languages, Sparkles, Trash2 } from 'lucide-react';
+import { deleteVocabulary } from '@/lib/actions';
+import { toast } from 'sonner';
+
+/**
+ * Component thẻ Flashcard có tính năng lật và xóa.
+ */
+export function FlashcardItem({ 
+  word, 
+  meaning, 
+  index, 
+  id 
+}: { 
+  word: string; 
+  meaning: string; 
+  index: number; 
+  id: string 
+}) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  // Hàm xử lý xóa từ vựng
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Ngăn không cho thẻ bị lật khi bấm nút xóa
+    if (confirm(`Mày chắc chắn muốn xóa từ "${word}" chứ?`)) {
+      try {
+        await deleteVocabulary(id);
+        toast.success("Đã xóa từ vựng thành công!");
+      } catch (error) {
+        toast.error("Có lỗi khi xóa từ.");
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="perspective-1000 h-64 w-full cursor-pointer group relative"
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      {/* NÚT XÓA - Hiện lên khi di chuột vào Card */}
+      <Button 
+        onClick={handleDelete}
+        variant="destructive" 
+        size="icon" 
+        className="absolute -top-2 -right-2 z-30 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+
+      <div className={cn(
+        "relative h-full w-full transition-all duration-700 preserve-3d",
+        isFlipped ? "[transform:rotateY(180deg)]" : ""
+      )}>
+        {/* MẶT TRƯỚC: TIẾNG ANH */}
+        <Card className="absolute inset-0 backface-hidden flex flex-col items-center justify-center bg-white border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)] transition-shadow rounded-3xl p-6 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+          <span className="absolute top-6 left-6 text-[10px] font-black text-zinc-300 uppercase tracking-[0.2em]">Card #{index + 1}</span>
+          <Sparkles className="absolute top-6 right-6 h-4 w-4 text-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          
+          <h3 className="text-3xl font-black text-zinc-800 tracking-tight text-center px-4">
+            {word}
+          </h3>
+          
+          <div className="mt-6 flex items-center gap-2 text-zinc-400">
+            <Languages className="h-4 w-4" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Tap to flip</span>
+          </div>
+        </Card>
+
+        {/* MẶT SAU: TIẾNG VIỆT */}
+        <Card className="absolute inset-0 backface-hidden [transform:rotateY(180deg)] flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 border-none rounded-3xl p-8 text-center shadow-2xl">
+          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          <span className="text-blue-200 text-[10px] font-bold uppercase tracking-[0.3em] mb-4">Meaning</span>
+          <p className="text-white text-xl md:text-2xl font-bold leading-relaxed z-10">
+            {meaning}
+          </p>
+          <div className="mt-8 h-1 w-12 bg-white/30 rounded-full"></div>
+        </Card>
+      </div>
+    </div>
+  );
 }
 </file>
 
@@ -1042,7 +1228,7 @@ export {
 <file path="components/ui/sonner.tsx">
 'use client';
 
-import { Toaster as Sonner } from 'next-sonner';
+import { Toaster as Sonner } from 'sonner';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -1090,60 +1276,25 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
 export { Textarea }
 </file>
 
-<file path="lib/actions.ts">
-'use server';
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 
-import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
 
-/**
- * Thêm bài học mới vào Database.
- * @param {FormData} formData - Dữ liệu từ form gửi lên.
- */
-export async function createLesson(formData: FormData) {
-  const title = formData.get('title') as string;
-  const content = formData.get('content') as string;
-  const type = formData.get('type') as 'IELTS' | 'HSG';
-  const category = formData.get('category') as string;
-
-  // Lưu vào Postgres thông qua Prisma
-  await prisma.lesson.create({
-    data: {
-      title,
-      content,
-      type,
-      category,
-    },
-  });
-
-  // Làm mới bộ nhớ đệm trang chủ/danh sách để hiện bài mới ngay lập tức
-  revalidatePath('/');
-  redirect('/'); // Xong thì quay về trang chủ
-}
-export async function saveVocabulary(word: string, meaning: string) {
-  const session = await getServerSession();
-  
-  if (!session?.user?.email) {
-    throw new Error("Mày phải đăng nhập mới lưu được chứ!");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
-  });
-
-  if (!user) return;
-
-  await prisma.vocabulary.create({
-    data: {
-      word,
-      meaning,
-      userId: user.id,
-    },
-  });
-
-  revalidatePath('/flashcards');
-}
+export default eslintConfig;
 </file>
 
 <file path="lib/prisma.ts">
@@ -1172,6 +1323,26 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
 </file>
 
 <file path="prisma.config.ts">
@@ -1248,6 +1419,102 @@ model Vocabulary {
 }
 </file>
 
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
 <file path=".gitignore">
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
@@ -1294,12 +1561,226 @@ next-env.d.ts
 /src/generated/prisma
 </file>
 
-<file path="AGENTS.md">
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+<file path="app/dictionary/page.tsx">
+'use client';
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  Search, 
+  Volume2, 
+  Plus, 
+  ExternalLink, 
+  GraduationCap, 
+  Image as ImageIcon, 
+  Lightbulb,
+  Library,
+  ArrowRight
+} from 'lucide-react';
+import { saveVocabulary, searchLocalVault } from '../../lib/actions';
+import { toast } from 'sonner';
+import { useSession } from 'next-auth/react'; 
+import Link from 'next/link';
+
+/**
+ * Smart Dictionary Page - Cambridge Edition with Idiom Support
+ * @returns {JSX.Element}
+ */
+export default function DictionaryPage() {
+  const { data: session } = useSession(); 
+  const [word, setWord] = useState('');
+  const [result, setResult] = useState<any>(null);
+  const [localResults, setLocalResults] = useState<any[]>([]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!word) return;
+    setLoading(true);
+    setLocalResults([]); // Reset kết quả cũ
+    
+    try {
+      // 1. TÌM TRONG KHO BÀI HỌC (Dành cho Idioms/Phrases)
+      const local = await searchLocalVault(word);
+      setLocalResults(local);
+
+      // 2. TRA TỪ ĐIỂN NGOẠI (Dành cho từ đơn)
+      const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      const dictData = await dictRes.json();
+
+      // 3. TRA HÌNH ẢNH
+      const imgRes = await fetch(
+        `https://api.unsplash.com/search/photos?query=${word}&client_id=${process.env.NEXT_PUBLIC_UNSPLASH_KEY}&per_page=1`
+      );
+      const imgData = await imgRes.json();
+
+      if (dictRes.ok) {
+        setResult(dictData[0]);
+        setImageUrl(imgData.results[0]?.urls?.regular || '');
+      } else {
+        setResult(null);
+        if (local.length === 0) {
+          toast.error("Không tìm thấy từ hoặc Idiom này!");
+        }
+      }
+    } catch (error) {
+      toast.error("Lỗi kết nối hệ thống.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const playAudio = (type: 'uk' | 'us') => {
+    const audio = result?.phonetics.find((p: any) => p.audio?.includes(type))?.audio 
+               || result?.phonetics.find((p: any) => p.audio)?.audio;
+    if (audio) new Audio(audio).play();
+  };
+
+  return (
+    <main className="min-h-screen bg-[#F0F2F5] pb-20">
+      {/* CAMBRIDGE HEADER */}
+      <div className="bg-[#003366] pt-16 pb-20 px-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 opacity-10">
+          <GraduationCap className="h-64 w-64 -rotate-12 translate-x-20 -translate-y-10 text-white" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h1 className="text-4xl font-serif font-bold text-white mb-8 flex items-center justify-center gap-3">
+            Cambridge Visual Dictionary
+          </h1>
+          <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto">
+            <Input 
+              value={word}
+              onChange={(e) => setWord(e.target.value)}
+              placeholder="Tra từ hoặc Idioms (VD: pull your socks up)..." 
+              className="h-16 pl-14 pr-36 rounded-2xl border-none shadow-2xl text-xl focus-visible:ring-yellow-400"
+            />
+            <Search className="absolute left-5 top-5 h-6 w-6 text-zinc-400" />
+            <Button type="submit" disabled={loading} className="absolute right-2 top-2 h-12 bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold rounded-xl px-8">
+              {loading ? '...' : 'SEARCH'}
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
+        
+        {/* PHẦN 1: KẾT QUẢ TỪ KHO BÀI HỌC (THE VAULT) */}
+        {localResults.length > 0 && (
+          <div className="mb-10 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-2 text-[#003366]">
+              <Library className="h-5 w-5" />
+              <h3 className="font-black uppercase tracking-widest text-xs">Found in your Lessons</h3>
+            </div>
+            <div className="grid gap-3">
+              {localResults.map((res) => (
+                <Link href={`/lessons/${res.id}`} key={res.id}>
+                  <Card className="border-l-4 border-l-yellow-400 hover:bg-white transition-all cursor-pointer shadow-md group">
+                    <CardContent className="p-5 flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-lg text-zinc-800 group-hover:text-blue-600 transition-colors">
+                          {res.matchedContent}
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">Nguồn: {res.title} • {res.type}</p>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-zinc-300 group-hover:translate-x-1 transition-transform" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* PHẦN 2: KẾT QUẢ TỪ ĐIỂN QUỐC TẾ */}
+        {result && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="border-none shadow-xl rounded-[32px] bg-white p-8">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-6xl font-serif font-bold text-[#003366] mb-4">{result.word}</h2>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-lg">
+                        <span className="text-[10px] font-black text-red-600">UK</span>
+                        <Volume2 onClick={() => playAudio('uk')} className="h-4 w-4 text-red-600 cursor-pointer" />
+                        <span className="text-sm font-mono text-zinc-500">{result.phonetic}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg">
+                        <span className="text-[10px] font-black text-blue-600">US</span>
+                        <Volume2 onClick={() => playAudio('us')} className="h-4 w-4 text-blue-600 cursor-pointer" />
+                      </div>
+                    </div>
+                  </div>
+                  <a href={`https://dictionary.cambridge.org/dictionary/english/${result.word}`} target="_blank">
+                    <Button variant="outline" className="rounded-full gap-2 border-zinc-200 text-zinc-500">
+                      Full Cambridge <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </a>
+                </div>
+              </Card>
+
+              {result.meanings.map((m: any, i: number) => (
+                <div key={i} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-zinc-900 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">{m.partOfSpeech}</span>
+                    <div className="h-px flex-1 bg-zinc-200"></div>
+                  </div>
+                  {m.definitions.slice(0, 2).map((def: any, di: number) => (
+                    <Card key={di} className="border-none shadow-sm rounded-2xl bg-white group">
+                      <CardContent className="p-6 flex justify-between gap-4">
+                        <div>
+                          <p className="text-lg text-zinc-800 leading-relaxed mb-3 font-medium">{def.definition}</p>
+                          {def.example && (
+                            <div className="flex gap-2 text-zinc-500 italic bg-zinc-50 p-4 rounded-xl border-l-4 border-blue-600">
+                              <Lightbulb className="h-4 w-4 text-blue-600 shrink-0" />
+                              <p>"{def.example}"</p>
+                            </div>
+                          )}
+                        </div>
+                        <Button onClick={() => saveVocabulary(result.word, def.definition)} variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 text-blue-600 rounded-full">
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="sticky top-24 space-y-6">
+                <Card className="border-none shadow-2xl rounded-[32px] overflow-hidden bg-white">
+                  <div className="p-4 border-b border-zinc-50 flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Visual Aid</span>
+                  </div>
+                  {imageUrl ? (
+                    <img src={imageUrl} alt={word} className="w-full h-64 object-cover" />
+                  ) : (
+                    <div className="h-64 bg-zinc-100 flex items-center justify-center text-zinc-300 italic text-sm">No image found</div>
+                  )}
+                </Card>
+                
+                <div className="p-6 bg-yellow-50 rounded-[32px] border border-yellow-100">
+                  <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4" /> Tip for {session?.user?.name || 'Học viên'}
+                  </h4>
+                  <p className="text-sm text-yellow-700 leading-relaxed">
+                    Dân ôn HSG nên chú ý các ví dụ (Examples) để học cách dùng từ trong ngữ cảnh (Context).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
 </file>
 
 <file path="app/globals.css">
@@ -1446,6 +1927,18 @@ body {
     @apply font-sans;
   }
 }
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180px);
+}
 </file>
 
 <file path="app/layout.tsx">
@@ -1484,127 +1977,242 @@ export default function RootLayout({ children }) {
 
 <file path="app/page.tsx">
 import { getServerSession } from 'next-auth';
+import { authOptions } from './api/auth/[...nextauth]/route';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { LogOut, User as UserIcon } from 'lucide-react'; // Import icon cho đẹp
+import { 
+  LogOut, 
+  User as UserIcon, 
+  BookText, 
+  BrainCircuit, 
+  Library, 
+  PlusCircle, 
+  Search,
+  GraduationCap
+} from 'lucide-react';
 
+/**
+ * Trang chủ English Mastery Hub - Dashboard tổng hợp.
+ * Tuân thủ chuẩn Server Component của Next.js 15/16.
+ */
 export default async function HomePage() {
-  // Lấy thông tin phiên đăng nhập từ Server
-  const session = await getServerSession();
+  // Lấy session kèm theo authOptions để check Role
+  const session = await getServerSession(authOptions);
+  const isAdmin = (session?.user as any)?.role === 'ADMIN';
 
   return (
-    <main className="min-h-screen bg-zinc-50 p-8">
-      {/* Thanh điều hướng nhanh (Navbar) */}
-      <div className="max-w-5xl mx-auto flex justify-end mb-6">
-        {session ? (
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border shadow-sm">
-              <UserIcon className="size-4 text-zinc-500" />
-              <span className="text-sm font-medium">Chào, {session.user?.name}</span>
-            </div>
-            {/* Chỗ này tí nữa làm nút Đăng xuất sau, tạm thời dùng link hoặc button */}
-            <Link href="/api/auth/signout">
-              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">
-                <LogOut className="size-4 mr-2" />
-                Đăng xuất
-              </Button>
-            </Link>
+    <main className="min-h-screen bg-[#FBFBFE] pb-20">
+      {/* NAVBAR CỰC SANG */}
+      <nav className="bg-white border-b border-zinc-100 sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-6 w-6 text-blue-600" />
+            <span className="font-black text-xl tracking-tighter text-zinc-900">LearnWithKhanh.</span>
           </div>
-        ) : (
-          <Link href="/login">
-            <Button variant="default">Đăng nhập</Button>
-          </Link>
-        )}
-      </div>
 
-      {/* Phần Header */}
-      <div className="max-w-5xl mx-auto text-center mb-12">
-        <h1 className="text-5xl font-extrabold tracking-tight text-zinc-900 mb-4">
-          English Mastery Hub
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <Link href="/admin/add-lesson">
+                <Button variant="ghost" size="sm" className="text-blue-600 font-bold">
+                  <PlusCircle className="size-4 mr-2" /> Thêm bài học
+                </Button>
+              </Link>
+            )}
+            
+            {session ? (
+              <div className="flex items-center gap-3">
+                <div className="hidden md:flex flex-col items-end">
+                  <span className="text-xs font-bold text-zinc-900">{session.user?.name}</span>
+                  <span className="text-[10px] text-zinc-400 uppercase font-black">{(session.user as any).role}</span>
+                </div>
+                <Link href="/api/auth/signout">
+                  <Button variant="outline" size="icon" className="rounded-full border-zinc-200">
+                    <LogOut className="size-4 text-red-500" />
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <Link href="/login">
+                <Button className="bg-blue-600 hover:bg-blue-700 rounded-full px-6">Đăng nhập</Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO SECTION */}
+      <div className="max-w-4xl mx-auto text-center pt-20 pb-16 px-6">
+        <h1 className="text-5xl md:text-7xl font-black text-zinc-900 mb-6 tracking-tight">
+          Master English <br />
+          <span className="text-blue-600">Every Single Day.</span>
         </h1>
-        <p className="text-lg text-zinc-600">
-          Hệ thống ôn luyện HSG & IELTS chuyên nghiệp.
+        <p className="text-lg text-zinc-500 mb-10 max-w-2xl mx-auto font-medium">
+          Hệ thống ôn luyện HSG & IELTS chuyên nghiệp dành riêng cho anh em mình. 
+          Tra cứu chuẩn Cambridge, lưu từ vựng thông minh.
         </p>
+        
+        <div className="flex flex-wrap justify-center gap-4">
+          <Link href="/dictionary">
+            <Button size="lg" className="h-14 px-8 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-lg font-bold shadow-xl">
+              <Search className="mr-2 h-5 w-5" /> Tra từ điển ngay
+            </Button>
+          </Link>
+          <Link href="/vault">
+            <Button size="lg" variant="outline" className="h-14 px-8 rounded-2xl border-2 text-lg font-bold">
+              Vào kho bài học
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Phần Modules */}
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* MODULES GRID */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-6">
+        {/* THE VAULT */}
         <Link href="/vault">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle>📚 The Vault</CardTitle>
-            <CardDescription>Kho tài liệu HSG & IELTS</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-zinc-500">
-              {session ? "Bắt đầu làm bài tập ngay thôi!" : "Đăng nhập để xem tài liệu."}
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="group hover:border-blue-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-2xl rounded-[32px] border-none p-4 bg-white">
+            <CardHeader>
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
+                <Library className="h-6 w-6 text-blue-600 group-hover:text-white" />
+              </div>
+              <CardTitle className="text-2xl font-black">The Vault</CardTitle>
+              <CardDescription className="font-medium">
+                Kho tài liệu HSG & IELTS được phân loại chi tiết.
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </Link>
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle>🗂️ Flashcards</CardTitle>
-            <CardDescription>Học từ vựng thông minh</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-zinc-500">
-              Lưu trữ từ mới và ôn luyện mỗi ngày.
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle>📊 Analytics</CardTitle>
-            <CardDescription>Bảng thành tích</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-zinc-500">
-              Theo dõi sự tiến bộ của mày và em trai.
-            </p>
-          </CardContent>
-        </Card>
+        {/* FLASHCARDS */}
+        <Link href="/flashcards">
+          <Card className="group hover:border-indigo-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-2xl rounded-[32px] border-none p-4 bg-white">
+            <CardHeader>
+              <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-indigo-600 transition-colors">
+                <BrainCircuit className="h-6 w-6 text-indigo-600 group-hover:text-white" />
+              </div>
+              <CardTitle className="text-2xl font-black">Flashcards</CardTitle>
+              <CardDescription className="font-medium">
+                Ôn tập từ vựng theo phương pháp lặp lại ngắt quãng.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        {/* DICTIONARY QUICK ACCESS */}
+        <Link href="/dictionary">
+          <Card className="group hover:border-yellow-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-2xl rounded-[32px] border-none p-4 bg-white">
+            <CardHeader>
+              <div className="w-12 h-12 bg-yellow-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-yellow-500 transition-colors">
+                <BookText className="h-6 w-6 text-yellow-600 group-hover:text-white" />
+              </div>
+              <CardTitle className="text-2xl font-black">Dictionary</CardTitle>
+              <CardDescription className="font-medium">
+                Tra cứu chuẩn Cambridge Academic kèm phát âm UK/US.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
       </div>
     </main>
   );
 }
 </file>
 
-<file path="CLAUDE.md">
-@AGENTS.md
-</file>
+<file path="lib/actions.ts">
+'use server';
 
-<file path="eslint.config.mjs">
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+// Trong lib/actions.ts
+import { authOptions } from '../app/api/auth/[...nextauth]/route';
+import bcrypt from 'bcryptjs';
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-]);
+/**
+ * 1. THÊM BÀI HỌC MỚI (Dành cho Admin)
+ */
+export async function createLesson(formData: FormData) {
+  const title = formData.get('title') as string;
+  const content = formData.get('content') as string;
+  const type = formData.get('type') as 'IELTS' | 'HSG';
+  const category = formData.get('category') as string;
 
-export default eslintConfig;
-</file>
+  await prisma.lesson.create({
+    data: { title, content, type, category },
+  });
 
-<file path="next.config.ts">
-import type { NextConfig } from "next";
+  revalidatePath('/vault');
+  redirect('/vault');
+}
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+/**
+ * 2. LƯU TỪ VỰNG VÀO FLASHCARD
+ */
+export async function saveVocabulary(word: string, meaning: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Chưa đăng nhập");
 
-export default nextConfig;
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email }
+  });
+
+  if (!user) return;
+
+  await prisma.vocabulary.create({
+    data: {
+      word,
+      meaning,
+      userId: user.id,
+    },
+  });
+
+  revalidatePath('/flashcards');
+}
+
+/**
+ * 3. XÓA TỪ VỰNG KHỎI FLASHCARD
+ */
+export async function deleteVocabulary(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session) throw new Error("Unauthorized");
+
+  await prisma.vocabulary.delete({
+    where: { 
+      id: id,
+      user: { email: session.user?.email! } 
+    },
+  });
+
+  revalidatePath('/flashcards');
+}
+
+/**
+ * 4. ĐĂNG KÝ TÀI KHOẢN MỚI (Dành cho em trai)
+ */
+export async function registerUser(formData: FormData) {
+  const name = formData.get('name') as string;
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+
+  if (!name || !email || !password) throw new Error("Thiếu thông tin");
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) throw new Error("Email đã tồn tại");
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      role: 'STUDENT',
+    },
+  });
+
+  redirect('/login');
+}
 </file>
 
 <file path="package.json">
@@ -1614,7 +2222,7 @@ export default nextConfig;
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -1653,112 +2261,6 @@ export default nextConfig;
     "tailwindcss": "^4",
     "typescript": "^5"
   }
-}
-</file>
-
-<file path="postcss.config.mjs">
-const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
-};
-
-export default config;
-</file>
-
-<file path="public/file.svg">
-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
-</file>
-
-<file path="public/globe.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
-</file>
-
-<file path="public/next.svg">
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
-</file>
-
-<file path="public/vercel.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
-</file>
-
-<file path="public/window.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
-</file>
-
-<file path="README.md">
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
-  },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
 }
 </file>
 

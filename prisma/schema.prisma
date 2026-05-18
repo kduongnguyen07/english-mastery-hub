@@ -1,6 +1,7 @@
 // 1. Cấu hình công cụ
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-edge-1.x"] // Thêm dòng này để chạy được trên Vercel
 }
 
 // 2. Cấu hình loại Database (Mình sẽ dùng PostgreSQL)
