@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
 import { createDeck } from '@/lib/actions';
-import { Folder, Play, Plus } from 'lucide-react';
+import { Folder, Play, Plus, BrainCircuit } from 'lucide-react';
 
 export default async function FlashcardsPage() {
   const session = await getServerSession(authOptions);
@@ -23,14 +23,13 @@ export default async function FlashcardsPage() {
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
-      {/* Sửa lại Header của app/flashcards/page.tsx */}
       <header className="flex justify-between items-end border-b border-notion-border pb-6">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
             <span className="text-4xl">🗂️</span> Decks
           </h1>
           <p className="text-zinc-500 font-medium text-sm">
-            Tạo nhóm từ vựng và bắt đầu Focus Mode.
+            Tạo nhóm từ vựng và bắt đầu Focus Mode hoặc Quiz Mode.
           </p>
         </div>
 
@@ -56,7 +55,7 @@ export default async function FlashcardsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
         
         {/* Thư mục mặc định */}
-        <div className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col h-40">
+        <div className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col min-h-[10rem]">
           <div className="flex items-start gap-3 mb-4">
             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Folder className="w-5 h-5" /></div>
             <div>
@@ -64,14 +63,19 @@ export default async function FlashcardsPage() {
               <p className="text-xs text-zinc-500 mt-1">{uncategorizedCount} từ vựng</p>
             </div>
           </div>
-          <Link href="/flashcards/focus?deck=uncategorized" className="mt-auto flex items-center justify-center gap-2 w-full h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-sm font-bold rounded-md transition-colors">
-            <Play className="w-4 h-4 fill-current" /> Bắt đầu học
-          </Link>
+          <div className="mt-auto flex gap-2">
+            <Link href="/flashcards/focus?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+              <Play className="w-4 h-4 fill-current" /> Focus
+            </Link>
+            <Link href="/flashcards/quiz?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-green-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+              <BrainCircuit className="w-4 h-4" /> Quiz
+            </Link>
+          </div>
         </div>
 
         {/* Thư mục tự tạo */}
         {decks.map(deck => (
-          <div key={deck.id} className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col h-40">
+          <div key={deck.id} className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col min-h-[10rem]">
             <div className="flex items-start gap-3 mb-4">
               <div className="p-2 bg-zinc-100 text-zinc-600 rounded-lg"><Folder className="w-5 h-5" /></div>
               <div>
@@ -79,9 +83,14 @@ export default async function FlashcardsPage() {
                 <p className="text-xs text-zinc-500 mt-1">{deck._count.vocabularies} từ vựng</p>
               </div>
             </div>
-            <Link href={`/flashcards/focus?deck=${deck.id}`} className="mt-auto flex items-center justify-center gap-2 w-full h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-sm font-bold rounded-md transition-colors">
-              <Play className="w-4 h-4 fill-current" /> Bắt đầu học
-            </Link>
+            <div className="mt-auto flex gap-2">
+              <Link href={`/flashcards/focus?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+                <Play className="w-4 h-4 fill-current" /> Focus
+              </Link>
+              <Link href={`/flashcards/quiz?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-green-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+                <BrainCircuit className="w-4 h-4" /> Quiz
+              </Link>
+            </div>
           </div>
         ))}
       </div>

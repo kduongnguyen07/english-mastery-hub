@@ -49,6 +49,9 @@ app/api/auth/[...nextauth]/route.ts
 app/api/setup/route.ts
 app/dictionary/page.tsx
 app/favicon.ico
+app/flashcards/focus/page.tsx
+app/flashcards/manage/ManageClient.tsx
+app/flashcards/manage/page.tsx
 app/flashcards/page.tsx
 app/globals.css
 app/layout.tsx
@@ -61,7 +64,9 @@ app/vault/page.tsx
 CLAUDE.md
 components.json
 components/FlashcardItem.tsx
+components/FocusStudy.tsx
 components/SaveVocabButton.tsx
+components/Sidebar.tsx
 components/ui/button.tsx
 components/ui/card.tsx
 components/ui/input.tsx
@@ -90,133 +95,6 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/admin/edit-lesson/[id]/page.tsx">
-import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
-import { updateLesson } from '@/lib/actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import Link from 'next/link';
-import { ChevronLeft, Save, Info } from 'lucide-react';
-
-export default async function EditLessonPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
-  const { id } = await params;
-
-  // 1. Lấy dữ liệu cũ để điền vào Form
-  const lesson = await prisma.lesson.findUnique({
-    where: { id }
-  });
-
-  if (!lesson) notFound();
-
-  // 2. Tạo một hàm trung gian để truyền ID vào Server Action
-  const updateLessonWithId = updateLesson.bind(null, id);
-
-  return (
-    <div className="min-h-screen bg-[#F8F9FB] p-8 font-sans">
-      <div className="max-w-3xl mx-auto">
-        {/* Nút quay lại */}
-        <Link href={`/lessons/${id}`}>
-          <Button variant="ghost" className="mb-6 text-zinc-500 font-bold">
-            <ChevronLeft className="mr-2 h-4 w-4" /> HỦY BỎ & QUAY LẠI
-          </Button>
-        </Link>
-
-        <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[32px] overflow-hidden bg-white">
-          <CardHeader className="bg-zinc-900 text-white p-8">
-            <CardTitle className="text-3xl font-black flex items-center gap-3">
-              <Save className="h-8 w-8 text-blue-400" /> Chỉnh sửa bài học
-            </CardTitle>
-            <p className="text-zinc-400 text-sm font-medium mt-2">
-              ID Bài học: <span className="font-mono">{id}</span>
-            </p>
-          </CardHeader>
-
-          <CardContent className="p-8">
-            <form action={updateLessonWithId} className="space-y-8">
-              {/* Tiêu đề */}
-              <div className="space-y-2">
-                <label className="text-xs font-black text-zinc-400 uppercase tracking-widest ml-1">Tiêu đề bài học</label>
-                <Input 
-                  name="title" 
-                  defaultValue={lesson.title} 
-                  className="h-14 rounded-2xl border-zinc-100 focus:ring-blue-600 text-lg font-bold" 
-                  required 
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Loại bài học */}
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-zinc-400 uppercase tracking-widest ml-1">Loại</label>
-                  <Select name="type" defaultValue={lesson.type}>
-                    <SelectTrigger className="h-14 rounded-2xl border-zinc-100">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="IELTS">IELTS</SelectItem>
-                      <SelectItem value="HSG">Học sinh giỏi</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Phân mục */}
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-zinc-400 uppercase tracking-widest ml-1">Phân mục</label>
-                  <Input 
-                    name="category" 
-                    defaultValue={lesson.category} 
-                    className="h-14 rounded-2xl border-zinc-100 focus:ring-blue-600" 
-                    required 
-                  />
-                </div>
-              </div>
-
-              {/* Nội dung chính */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Nội dung bài học</label>
-                  <div className="flex items-center gap-1 text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">
-                    <Info className="h-3 w-3" /> Định dạng: Từ vựng : Nghĩa
-                  </div>
-                </div>
-                <Textarea 
-                  name="content" 
-                  defaultValue={lesson.content} 
-                  rows={15} 
-                  className="rounded-[24px] border-zinc-100 focus:ring-blue-600 p-6 font-mono text-sm leading-relaxed bg-zinc-50/50" 
-                  required 
-                />
-              </div>
-
-              {/* Nút lưu */}
-              <div className="pt-4">
-                <Button type="submit" className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xl shadow-xl shadow-blue-100 transition-all active:scale-[0.98]">
-                  LƯU THAY ĐỔI NGAY
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path=".prettierrc">
 {
   "semi": true,
@@ -233,87 +111,6 @@ export default async function EditLessonPage({
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
-</file>
-
-<file path="app/admin/add-lesson/page.tsx">
-'use client'; // <-- BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ MENU HOẠT ĐỘNG
-
-import { createLesson } from '@/lib/actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { useState } from 'react';
-
-export default function AddLessonPage() {
-  // Vì Select của Shadcn không tự nhảy vào FormData, ta dùng state để giữ giá trị
-  const [lessonType, setLessonType] = useState('');
-
-  return (
-    <div className="min-h-screen bg-zinc-50 p-8">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl">Thêm bài học mới</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createLesson} className="space-y-6">
-            {/* Input ẩn này để đảm bảo giá trị Select được gửi đi cùng form */}
-            <input type="hidden" name="type" value={lessonType} />
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tiêu đề bài học</label>
-              <Input name="title" placeholder="VD: 50 Idioms thông dụng" required />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Loại bài học</label>
-                <Select onValueChange={setLessonType} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn loại" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IELTS">IELTS</SelectItem>
-                    <SelectItem value="HSG">Học sinh giỏi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Phân mục</label>
-                <Input name="category" placeholder="VD: Idioms" required />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nội dung bài học</label>
-              <Textarea 
-                name="content" 
-                placeholder="Nhập kiến thức ở đây..." 
-                rows={10} 
-                required 
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => window.history.back()}>
-                Hủy
-              </Button>
-              <Button type="submit">Đăng bài học</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 </file>
 
 <file path="app/api/setup/route.ts">
@@ -352,375 +149,204 @@ export async function GET() {
 }
 </file>
 
-<file path="app/lessons/[id]/page.tsx">
+<file path="app/flashcards/focus/page.tsx">
 import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { 
-  ChevronLeft, 
-  BookOpen, 
-  Copy, 
-  BookmarkPlus, 
-  Settings2, 
-  Sparkles,
-  CheckCircle2
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { SaveVocabButton } from '@/components/SaveVocabButton';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+import { FocusStudy } from '@/components/FocusStudy';
 
-export default async function LessonDetailPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
+export default async function FocusModePage({
+  searchParams
+}: {
+  searchParams: Promise<{ deck?: string }>
 }) {
-  const { id } = await params;
-  
-  // 1. Lấy session để check quyền Admin
+  const { deck } = await searchParams;
   const session = await getServerSession(authOptions);
-  const isAdmin = (session?.user as any)?.role === 'ADMIN';
+  if (!session) return null;
 
-  // 2. Lấy dữ liệu bài học
-  const lesson = await prisma.lesson.findUnique({ where: { id } });
-  if (!lesson) notFound();
-
-  // 3. Tách nội dung thô thành danh sách (Xử lý lỗi nếu dòng không có dấu :)
-  const items = lesson.content.split('\n').filter(line => line.trim() !== '').map(line => {
-    const [word, ...meaningParts] = line.split(':');
-    return {
-      word: word?.trim() || "N/A",
-      meaning: meaningParts.join(':')?.trim() || "Chưa có nghĩa"
-    };
+  // Lấy list từ vựng theo cái deck mà user click vào
+  const vocabs = await prisma.vocabulary.findMany({
+    where: { 
+      user: { email: session.user?.email! },
+      deckId: deck === 'uncategorized' ? null : deck
+    },
+    orderBy: { createdAt: 'desc' }
   });
 
   return (
-    <main className="min-h-screen bg-[#F4F7FA] pb-20 font-sans">
-      {/* HEADER STICKY - SANG TRỌNG */}
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-zinc-200">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/vault" className="flex items-center text-xs font-black text-zinc-400 hover:text-blue-600 transition-colors tracking-widest">
-            <ChevronLeft className="mr-1 h-4 w-4" /> QUAY LẠI KHO
-          </Link>
-          
-          <div className="flex items-center gap-2">
-            {/* NÚT SỬA CHỈ HIỆN CHO ADMIN */}
-            {isAdmin && (
-              <Link href={`/admin/edit-lesson/${id}`}>
-                <Button variant="outline" size="sm" className="rounded-full border-blue-200 text-blue-600 hover:bg-blue-50 font-bold">
-                  <Settings2 className="mr-2 h-4 w-4" /> Sửa bài
-                </Button>
-              </Link>
-            )}
-            <Button variant="ghost" size="icon" className="rounded-full text-zinc-400"><BookmarkPlus className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" className="rounded-full text-zinc-400"><Copy className="h-5 w-5" /></Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 mt-12">
-        {/* PHẦN TIÊU ĐỀ BÀI HỌC */}
-        <div className="mb-12 relative">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black rounded-full tracking-tighter uppercase">
-              {lesson.type}
-            </span>
-            <span className="text-zinc-400 text-xs font-bold uppercase tracking-[0.2em]">
-              {lesson.category}
-            </span>
-          </div>
-          
-          <h1 className="text-4xl md:text-6xl font-serif font-black text-zinc-900 leading-tight mb-6">
-            {lesson.title}
-          </h1>
-          
-          <div className="flex items-center gap-6 text-zinc-500 text-sm font-medium">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-blue-500" />
-              <span>{items.length} từ vựng</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-              <span>Trình độ: Advanced</span>
-            </div>
-          </div>
-          
-          <div className="absolute -left-8 top-0 w-1 h-full bg-blue-600 rounded-full hidden md:block"></div>
-        </div>
-
-        {/* DANH SÁCH TỪ VỰNG - CARD DESIGN */}
-        <div className="space-y-4">
-          {items.map((item, index) => (
-            <Card key={index} className="group border-none shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] transition-all duration-300 rounded-2xl overflow-hidden bg-white">
-              <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row">
-                  {/* Cột từ tiếng Anh (Font Serif cực sang) */}
-                  <div className="p-6 md:w-1/3 bg-zinc-50/30 group-hover:bg-blue-50/50 transition-colors border-b md:border-b-0 md:border-r border-zinc-100">
-                    <div className="text-[10px] font-black text-zinc-300 mb-2 tracking-widest">TERM #{index + 1}</div>
-                    <h3 className="text-2xl font-serif font-bold text-blue-700 leading-tight">
-                      {item.word}
-                    </h3>
-                  </div>
-                  
-                  {/* Cột nghĩa tiếng Việt (Font Sans hiện đại) */}
-                  <div className="p-6 md:w-2/3 flex justify-between items-center bg-white">
-                    <p className="text-zinc-700 text-lg font-medium leading-relaxed">
-                      {item.meaning}
-                    </p>
-                    <div className="flex items-center gap-2 ml-4">
-                      <SaveVocabButton word={item.word} meaning={item.meaning} />
-                      <CheckCircle2 className="h-5 w-5 text-zinc-100 group-hover:text-green-500 transition-colors" />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* NÚT HOÀN THÀNH */}
-        <div className="mt-16 text-center">
-          <Button size="lg" className="h-16 px-12 rounded-full bg-zinc-900 hover:bg-blue-600 text-white font-black text-lg shadow-2xl transition-all hover:scale-105 active:scale-95">
-            <BookOpen className="mr-3 h-6 w-6" /> ĐÃ HỌC XONG BÀI NÀY
-          </Button>
-          <p className="mt-4 text-zinc-400 text-xs font-bold tracking-widest uppercase">
-            Tiến độ sẽ được lưu vào Analytics
-          </p>
-        </div>
-      </div>
-    </main>
+    <div className="w-full animate-in fade-in duration-500 pb-20">
+      <Link href="/flashcards" className="inline-flex items-center gap-2 text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors mb-4 uppercase tracking-widest">
+        <ChevronLeft className="w-4 h-4" /> Thoát Focus Mode
+      </Link>
+      
+      {/* Gọi giao diện vừa viết ở Bước 4 */}
+      <FocusStudy vocabs={vocabs} />
+    </div>
   );
 }
 </file>
 
-<file path="app/login/page.tsx">
+<file path="app/flashcards/manage/ManageClient.tsx">
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { GraduationCap, LockKeyhole } from 'lucide-react';
-import Link from 'next/link';
+import { bulkUpdateVocabDeck, deleteVocabulary } from '@/lib/actions';
+import { Trash2, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
+export default function ManageClient({ vocabs, decks }: { vocabs: any[], decks: any[] }) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [targetDeck, setTargetDeck] = useState('null');
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    const res = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-    });
-
-    if (res?.error) {
-      toast.error("Sai email hoặc mật khẩu rồi!");
-      setIsLoading(false);
-    } else {
-      toast.success("Chào mừng mày quay trở lại!");
-      router.push('/');
-      router.refresh();
-    }
+  // Chọn / Bỏ chọn 1 dòng
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] p-4">
-      <Card className="w-full max-w-md border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[40px] p-4 bg-white">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mb-2 shadow-lg">
-            <LockKeyhole className="h-10 w-10 text-white" />
-          </div>
-          <CardTitle className="text-3xl font-black text-zinc-900 tracking-tight">Đăng nhập</CardTitle>
-          <CardDescription className="font-medium">Tiếp tục hành trình học tập của mày.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Email</label>
-              <Input name="email" type="email" placeholder="admin@gmail.com" required className="h-12 rounded-2xl border-zinc-100 focus:ring-zinc-900" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Mật khẩu</label>
-              <Input name="password" type="password" placeholder="••••••••" required className="h-12 rounded-2xl border-zinc-100 focus:ring-zinc-900" />
-            </div>
-            
-            <Button type="submit" disabled={isLoading} className="w-full h-14 bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl font-bold text-lg shadow-xl transition-all active:scale-95">
-              {isLoading ? 'Đang kiểm tra...' : 'Vào hệ thống'}
-            </Button>
-          </form>
+  // Chọn tất cả
+  const toggleSelectAll = () => {
+    if (selectedIds.length === vocabs.length) setSelectedIds([]);
+    else setSelectedIds(vocabs.map(v => v.id));
+  };
 
-          <div className="mt-8 text-center">
-            <p className="text-zinc-500 text-sm font-medium">
-              Chưa có tài khoản?{' '}
-              <Link href="/register" className="text-blue-600 font-black hover:underline">
-                Đăng ký ngay
-              </Link>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-</file>
-
-<file path="app/providers.tsx">
-'use client';
-
-import { SessionProvider } from 'next-auth/react';
-
-/**
- * Client-side provider to manage NextAuth sessions.
- * @param {React.ReactNode} children - The child components.
- * @returns {JSX.Element} The provider wrapper.
- */
-export function Providers({ children }: { children: React.ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>;
-}
-</file>
-
-<file path="app/register/page.tsx">
-'use client';
-
-import { registerUser } from '@/lib/actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { GraduationCap, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
-import { toast } from 'sonner';
-
-export default function RegisterPage() {
-  const handleSubmit = async (formData: FormData) => {
+  // NÚT LƯU TẤT CẢ (Apply to all selected)
+  const handleBulkUpdate = async () => {
+    if (selectedIds.length === 0) return toast.error("Chưa chọn từ nào!");
+    setIsUpdating(true);
     try {
-      await registerUser(formData);
-      toast.success("Đăng ký thành công! Đăng nhập ngay nhé.");
-    } catch (error: any) {
-      toast.error(error.message || "Có lỗi xảy ra");
+      await bulkUpdateVocabDeck(selectedIds, targetDeck === 'null' ? null : targetDeck);
+      toast.success(`Đã chuyển ${selectedIds.length} từ vào thư mục thành công!`);
+      setSelectedIds([]); // Reset chọn
+      router.refresh(); // F5 lại data
+    } catch (error) {
+      toast.error("Có lỗi xảy ra!");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Xóa 1 từ
+  const handleDelete = async (id: string) => {
+    if(!confirm("Chắc chắn xóa từ này?")) return;
+    try {
+      await deleteVocabulary(id);
+      toast.success("Đã xóa từ vựng!");
+      router.refresh();
+    } catch (e) {
+      toast.error("Lỗi khi xóa!");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] p-4">
-      <Card className="w-full max-w-md border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[40px] p-4 bg-white">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-2 shadow-lg shadow-blue-200">
-            <GraduationCap className="h-10 w-10 text-white" />
-          </div>
-          <CardTitle className="text-3xl font-black text-zinc-900 tracking-tight">Tạo tài khoản</CardTitle>
-          <CardDescription className="font-medium">Bắt đầu hành trình chinh phục IELTS cùng EMH.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Họ và tên</label>
-              <Input name="name" placeholder="VD: Nguyễn Văn Em" required className="h-12 rounded-2xl border-zinc-100 focus:ring-blue-600" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Email</label>
-              <Input name="email" type="email" placeholder="emtrai@gmail.com" required className="h-12 rounded-2xl border-zinc-100 focus:ring-blue-600" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Mật khẩu</label>
-              <Input name="password" type="password" placeholder="••••••••" required className="h-12 rounded-2xl border-zinc-100 focus:ring-blue-600" />
-            </div>
-            
-            <Button type="submit" className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-100 transition-all active:scale-95">
-              Đăng ký ngay <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </form>
+    <div className="space-y-4">
+      {/* THANH CÔNG CỤ (BULK ACTION) - XUẤT HIỆN KHI CÓ TỪ ĐƯỢC CHỌN */}
+      <div className={`p-4 bg-zinc-900 rounded-xl flex items-center justify-between text-white transition-all ${selectedIds.length > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none hidden'}`}>
+        <div className="flex items-center gap-2 font-medium">
+          <CheckSquare className="w-5 h-5 text-blue-400" /> Đã chọn {selectedIds.length} từ
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-400">Chuyển tất cả vào:</span>
+          <select 
+            value={targetDeck} 
+            onChange={(e) => setTargetDeck(e.target.value)}
+            className="h-9 px-3 bg-zinc-800 border border-zinc-700 rounded-md text-sm outline-none focus:border-blue-500"
+          >
+            <option value="null">📂 Chưa phân loại</option>
+            {decks.map(d => <option key={d.id} value={d.id}>📁 {d.name}</option>)}
+          </select>
+          <button 
+            onClick={handleBulkUpdate} disabled={isUpdating}
+            className="h-9 px-4 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-bold transition-colors disabled:opacity-50"
+          >
+            {isUpdating ? 'Đang chuyển...' : 'Áp dụng'}
+          </button>
+        </div>
+      </div>
 
-          <div className="mt-8 text-center">
-            <p className="text-zinc-500 text-sm font-medium">
-              Đã có tài khoản rồi?{' '}
-              <Link href="/login" className="text-blue-600 font-black hover:underline">
-                Đăng nhập
-              </Link>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* BẢNG DỮ LIỆU */}
+      <div className="border border-notion-border rounded-xl overflow-hidden bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-[#fbfbfa] border-b border-notion-border text-zinc-500">
+            <tr>
+              <th className="px-6 py-4 w-12">
+                <input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.length === vocabs.length && vocabs.length > 0} className="w-4 h-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500" />
+              </th>
+              <th className="px-6 py-4 font-bold">Từ vựng</th>
+              <th className="px-6 py-4 font-bold">Ý nghĩa</th>
+              <th className="px-6 py-4 font-bold">Thư mục hiện tại</th>
+              <th className="px-6 py-4 font-bold w-20 text-center">Xóa</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-notion-border">
+            {vocabs.map((v) => (
+              <tr key={v.id} className={`hover:bg-blue-50/50 transition-colors ${selectedIds.includes(v.id) ? 'bg-blue-50/50' : ''}`}>
+                <td className="px-6 py-4">
+                  <input type="checkbox" checked={selectedIds.includes(v.id)} onChange={() => toggleSelect(v.id)} className="w-4 h-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                </td>
+                <td className="px-6 py-4 font-bold text-zinc-900">{v.word}</td>
+                <td className="px-6 py-4 text-zinc-600 max-w-[300px] truncate" title={v.meaning}>{v.meaning}</td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-zinc-100 text-zinc-700">
+                    {v.deckId ? `📁 ${decks.find(d=>d.id === v.deckId)?.name}` : '📂 Chưa phân loại'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <button onClick={() => handleDelete(v.id)} className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 </file>
 
-<file path="app/vault/page.tsx">
+<file path="app/flashcards/manage/page.tsx">
 import { prisma } from '@/lib/prisma';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
-import { BookOpen } from 'lucide-react';
+import { ChevronLeft, Database } from 'lucide-react';
+import ManageClient from './ManageClient'; // Gọi component con
 
-/**
- * Trang danh sách tất cả bài học (The Vault).
- * @returns {JSX.Element}
- */
-export default async function VaultPage() {
-  // 1. Lấy toàn bộ bài học từ Database, bài mới nhất hiện lên đầu
-  const lessons = await prisma.lesson.findMany({
-    orderBy: { createdAt: 'desc' },
+export default async function ManageFlashcardsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) return null;
+
+  const vocabs = await prisma.vocabulary.findMany({
+    where: { user: { email: session.user?.email! } },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const decks = await prisma.deck.findMany({
+    where: { user: { email: session.user?.email! } },
   });
 
   return (
-    <main className="min-h-screen bg-zinc-50 p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-zinc-900">The Vault</h1>
-            <p className="text-zinc-500">Kho lưu trữ bài học HSG & IELTS</p>
-          </div>
-          <Link href="/admin/add-lesson">
-            <Button variant="outline">+ Thêm bài mới</Button>
+    <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
+      <header className="flex justify-between items-end border-b border-notion-border pb-6">
+        <div className="space-y-2">
+          <Link href="/flashcards" className="flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors mb-4">
+            <ChevronLeft className="w-4 h-4" /> Quay lại Decks
           </Link>
+          <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
+            <Database className="w-8 h-8" /> Quản lý Kho Từ
+          </h1>
         </div>
+      </header>
 
-        {/* Lưới danh sách bài học */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {lessons.length === 0 ? (
-            <p className="text-zinc-500 italic">Chưa có bài học nào được đăng.</p>
-          ) : (
-            lessons.map((lesson) => (
-              <Card key={lesson.id} className="hover:shadow-lg transition-all">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded uppercase">
-                      {lesson.type}
-                    </span>
-                    <span className="text-xs text-zinc-400">
-                      {new Date(lesson.createdAt).toLocaleDateString('vi-VN')}
-                    </span>
-                  </div>
-                  <CardTitle className="mt-2 text-xl">{lesson.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-zinc-500 mb-4 italic">
-                    Phân mục: {lesson.category}
-                  </p>
-                  <Link href={`/lessons/${lesson.id}`}>
-                    <Button className="w-full">
-                      <BookOpen className="mr-2 h-4 w-4" /> Bắt đầu học
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      </div>
-    </main>
+      {/* Truyền data sang Client Component để xử lý logic Checkbox */}
+      <ManageClient vocabs={vocabs} decks={decks} />
+    </div>
   );
 }
 </file>
@@ -757,91 +383,145 @@ export default async function VaultPage() {
 }
 </file>
 
-<file path="components/FlashcardItem.tsx">
+<file path="components/FocusStudy.tsx">
 'use client';
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button'; // QUAN TRỌNG: Phải có dòng này
-import { cn } from '@/lib/utils';
-import { Languages, Sparkles, Trash2 } from 'lucide-react';
-import { deleteVocabulary } from '@/lib/actions';
-import { toast } from 'sonner';
+import { useState, useRef } from 'react';
+import { RotateCw, Check, X, Trophy } from 'lucide-react';
+import Link from 'next/link';
 
-/**
- * Component thẻ Flashcard có tính năng lật và xóa.
- */
-export function FlashcardItem({ 
-  word, 
-  meaning, 
-  index, 
-  id 
-}: { 
-  word: string; 
-  meaning: string; 
-  index: number; 
-  id: string 
-}) {
+type Vocab = { id: string; word: string; meaning: string };
+
+export function FocusStudy({ vocabs }: { vocabs: Vocab[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [learnedCount, setLearnedCount] = useState(0);
 
-  // Hàm xử lý xóa từ vựng
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Ngăn không cho thẻ bị lật khi bấm nút xóa
-    if (confirm(`Mày chắc chắn muốn xóa từ "${word}" chứ?`)) {
-      try {
-        await deleteVocabulary(id);
-        toast.success("Đã xóa từ vựng thành công!");
-      } catch (error) {
-        toast.error("Có lỗi khi xóa từ.");
-      }
-    }
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startX = useRef(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  if (vocabs.length === 0) return (
+    <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500 animate-in fade-in"><span className="text-4xl mb-4">📭</span><p>Thư mục này chưa có từ vựng.</p></div>
+  );
+  
+  if (currentIndex >= vocabs.length) return (
+    <div className="flex flex-col items-center justify-center h-[80vh] space-y-6 animate-in zoom-in duration-500 text-center">
+      <Trophy className="w-24 h-24 text-yellow-500" />
+      <h2 className="text-5xl font-black text-notion-text tracking-tighter">Hoàn thành xuất sắc!</h2>
+      <p className="text-xl text-zinc-500">Mày đã học xong {learnedCount}/{vocabs.length} từ vựng.</p>
+      <Link href="/flashcards" className="mt-8 px-10 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-2xl hover:bg-blue-700 transition-all hover:scale-105 active:scale-95">
+        Quay về Kho Decks
+      </Link>
+    </div>
+  );
+
+  const currentVocab = vocabs[currentIndex];
+
+  const handleNext = (learned: boolean) => {
+    // ÉP THẺ BAY MẤT HÚT KHỎI MÀN HÌNH (Văng 2000px)
+    setDragX(learned ? 2000 : -2000); 
+    setTimeout(() => {
+      setIsFlipped(false);
+      setDragX(0); 
+      if (learned) setLearnedCount(c => c + 1);
+      setCurrentIndex(i => i + 1);
+    }, 300); 
+  };
+
+  const onDragStart = (clientX: number) => { startX.current = clientX; setIsDragging(true); };
+  const onDragMove = (clientX: number) => { if (!isDragging) return; setDragX(clientX - startX.current); };
+  const onDragEnd = () => {
+    setIsDragging(false);
+    if (dragX > 150) handleNext(true); 
+    else if (dragX < -150) handleNext(false); 
+    else if (Math.abs(dragX) < 5) setIsFlipped(!isFlipped); 
+    else setDragX(0); 
   };
 
   return (
-    <div 
-      className="perspective-1000 h-64 w-full cursor-pointer group relative"
-      onClick={() => setIsFlipped(!isFlipped)}
-    >
-      {/* NÚT XÓA - Hiện lên khi di chuột vào Card */}
-      <Button 
-        onClick={handleDelete}
-        variant="destructive" 
-        size="icon" 
-        className="absolute -top-2 -right-2 z-30 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-
-      <div className={cn(
-        "relative h-full w-full transition-all duration-700 preserve-3d",
-        isFlipped ? "[transform:rotateY(180deg)]" : ""
-      )}>
-        {/* MẶT TRƯỚC: TIẾNG ANH */}
-        <Card className="absolute inset-0 backface-hidden flex flex-col items-center justify-center bg-white border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] group-hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)] transition-shadow rounded-3xl p-6 overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
-          <span className="absolute top-6 left-6 text-[10px] font-black text-zinc-300 uppercase tracking-[0.2em]">Card #{index + 1}</span>
-          <Sparkles className="absolute top-6 right-6 h-4 w-4 text-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-          
-          <h3 className="text-3xl font-black text-zinc-800 tracking-tight text-center px-4">
-            {word}
-          </h3>
-          
-          <div className="mt-6 flex items-center gap-2 text-zinc-400">
-            <Languages className="h-4 w-4" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Tap to flip</span>
-          </div>
-        </Card>
-
-        {/* MẶT SAU: TIẾNG VIỆT */}
-        <Card className="absolute inset-0 backface-hidden [transform:rotateY(180deg)] flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 border-none rounded-3xl p-8 text-center shadow-2xl">
-          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-          <span className="text-blue-200 text-[10px] font-bold uppercase tracking-[0.3em] mb-4">Meaning</span>
-          <p className="text-white text-xl md:text-2xl font-bold leading-relaxed z-10">
-            {meaning}
-          </p>
-          <div className="mt-8 h-1 w-12 bg-white/30 rounded-full"></div>
-        </Card>
+    // BỎ max-w-4xl, BỎ overflow-hidden. Cho w-full để tràn hết màn hình máy tính.
+    <div className="w-full h-full flex flex-col items-center justify-center space-y-12 relative py-10">
+      
+      {/* THANH TIẾN ĐỘ RỘNG RÃI */}
+      <div className="w-full max-w-4xl space-y-4 z-0">
+        <div className="flex justify-between text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] px-2">
+          <span>Tiến độ: {currentIndex + 1} / {vocabs.length}</span>
+          <span>Đã thuộc: {learnedCount}</span>
+        </div>
+        <div className="w-full h-2.5 bg-notion-border rounded-full overflow-hidden shadow-inner">
+          <div 
+            className="h-full bg-blue-500 transition-all duration-700 ease-out" 
+            style={{ width: `${(currentIndex / vocabs.length) * 100}%` }}
+          ></div>
+        </div>
       </div>
+
+      {/* THẺ HÌNH CHỮ NHẬT NGANG (HCN) SIÊU TO (max-w-5xl) */}
+      <div 
+        ref={cardRef}
+        className="perspective-1000 w-full max-w-5xl h-[450px] md:h-[500px] cursor-grab active:cursor-grabbing group z-50"
+        onMouseDown={(e) => onDragStart(e.clientX)}
+        onMouseMove={(e) => onDragMove(e.clientX)}
+        onMouseUp={onDragEnd}
+        onMouseLeave={() => { if(isDragging) onDragEnd(); }}
+        onTouchStart={(e) => onDragStart(e.touches[0].clientX)}
+        onTouchMove={(e) => onDragMove(e.touches[0].clientX)}
+        onTouchEnd={onDragEnd}
+        style={{
+          transform: `translateX(${dragX}px) rotate(${dragX * 0.02}deg)`,
+          transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        }}
+      >
+        <div className={`relative h-full w-full preserve-3d shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] rounded-[40px] border-2 ${dragX > 100 ? 'border-green-500' : dragX < -100 ? 'border-red-500' : 'border-notion-border'} bg-notion-bg ${isFlipped ? 'rotate-y-180' : ''}`}
+             style={{ transition: isDragging ? 'none' : 'transform 0.6s ease' }}>
+          
+          {/* STAMPS LIKE TINDER */}
+          <div className={`absolute top-12 right-12 border-8 border-green-500 text-green-500 font-black text-6xl px-8 py-4 rounded-3xl rotate-12 opacity-0 z-50 transition-opacity ${dragX > 100 && 'opacity-100'}`}>LIKE</div>
+          <div className={`absolute top-12 left-12 border-8 border-red-500 text-red-500 font-black text-6xl px-8 py-4 rounded-3xl -rotate-12 opacity-0 z-50 transition-opacity ${dragX < -100 && 'opacity-100'}`}>NOPE</div>
+
+          {/* MẶT TRƯỚC (TERM) */}
+          <div className="absolute inset-0 backface-hidden flex flex-col items-center justify-center p-12 rounded-[40px] select-none bg-notion-bg">
+            <div className="w-full h-full flex items-center justify-center overflow-y-auto custom-scrollbar">
+              <h2 className="text-6xl md:text-8xl font-black text-notion-text text-center tracking-tighter leading-tight pointer-events-none break-words w-full px-4">
+                {currentVocab.word}
+              </h2>
+            </div>
+            <div className="absolute bottom-10 flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] bg-notion-sidebar px-6 py-3 rounded-full pointer-events-none shadow-sm">
+              <RotateCw className="w-4 h-4" /> CLICK TO FLIP • SWIPE TO SELECT
+            </div>
+          </div>
+
+          {/* MẶT SAU (MEANING) */}
+          <div className="absolute inset-0 backface-hidden rotate-y-180 flex flex-col items-center bg-notion-sidebar p-12 rounded-[40px] select-none">
+            <span className="absolute top-10 left-12 text-sm font-black text-blue-500 uppercase tracking-[0.3em] bg-blue-500/10 px-4 py-2 rounded-xl pointer-events-none">Definition</span>
+            
+            <div className="w-full h-full flex items-center justify-center overflow-y-auto mt-10 custom-scrollbar">
+              <p className="text-3xl md:text-5xl font-medium text-notion-text text-center leading-relaxed pointer-events-none w-full break-words px-4">
+                {currentVocab.meaning}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* NÚT ĐIỀU KHIỂN TO TRÒN CHUẨN TINDER */}
+      <div className={`flex items-center gap-12 w-full justify-center transition-all duration-500 z-0 ${isFlipped ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+        <button 
+          onClick={() => handleNext(false)} 
+          className="w-24 h-24 rounded-full flex items-center justify-center bg-notion-bg border-4 border-notion-border hover:border-red-500 hover:scale-110 text-red-500 shadow-2xl active:scale-90 transition-all group"
+        >
+          <X className="w-12 h-12 stroke-[4]" />
+        </button>
+        <button 
+          onClick={() => handleNext(true)} 
+          className="w-24 h-24 rounded-full flex items-center justify-center bg-notion-bg border-4 border-notion-border hover:border-green-500 hover:scale-110 text-green-500 shadow-2xl active:scale-90 transition-all group"
+        >
+          <Check className="w-12 h-12 stroke-[4]" />
+        </button>
+      </div>
+
     </div>
   );
 }
@@ -1577,6 +1257,126 @@ next-env.d.ts
 /src/generated/prisma
 </file>
 
+<file path="app/admin/edit-lesson/[id]/page.tsx">
+import { prisma } from '@/lib/prisma';
+import { notFound } from 'next/navigation';
+import { updateLesson } from '@/lib/actions';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import Link from 'next/link';
+import { ChevronLeft, Save, Info } from 'lucide-react';
+
+export default async function EditLessonPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params;
+  const lesson = await prisma.lesson.findUnique({
+    where: { id }
+  });
+
+  if (!lesson) notFound();
+
+  const updateLessonWithId = updateLesson.bind(null, id);
+
+  return (
+    <div className="max-w-3xl space-y-8 animate-in fade-in duration-500 pb-20">
+      
+      {/* Header Navigation */}
+      <div className="flex items-center justify-between text-sm text-zinc-500 mb-8">
+        <Link href={`/lessons/${id}`} className="flex items-center gap-1 hover:text-zinc-900 transition-colors">
+          <ChevronLeft className="w-4 h-4" /> Quay lại bài học
+        </Link>
+      </div>
+
+      <div className="space-y-2 border-b border-notion-border pb-6">
+        <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
+          <span className="text-4xl">📝</span> Chỉnh sửa bài học
+        </h1>
+        <p className="text-zinc-500 font-medium text-sm flex items-center gap-2">
+          ID: <span className="font-mono bg-zinc-100 px-2 py-0.5 rounded text-xs">{id}</span>
+        </p>
+      </div>
+
+      <form action={updateLessonWithId} className="space-y-6">
+        {/* Tiêu đề */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tiêu đề bài học</label>
+          <Input 
+            name="title" 
+            defaultValue={lesson.title} 
+            className="h-12 border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md text-lg font-medium" 
+            required 
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Loại bài học */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Loại</label>
+            <Select name="type" defaultValue={lesson.type}>
+              <SelectTrigger className="h-12 w-full border-notion-border bg-transparent rounded-md focus:ring-1 focus:ring-zinc-300 flex items-center justify-between px-3">
+                {/* Đảm bảo SelectValue nằm trong một container sạch sẽ */}
+                <div className="truncate flex-1 text-left">
+                    <SelectValue placeholder="Chọn loại bài học..." />
+                </div>
+                </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="IELTS">IELTS</SelectItem>
+                <SelectItem value="HSG">Học sinh giỏi</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Phân mục */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Phân mục</label>
+            <Input 
+              name="category" 
+              defaultValue={lesson.category} 
+              className="h-12 border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md" 
+              required 
+            />
+          </div>
+        </div>
+
+        {/* Nội dung chính */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Nội dung bài học</label>
+            <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-medium bg-zinc-100 px-2 py-1 rounded">
+              <Info className="h-3 w-3" /> Định dạng: Từ vựng : Nghĩa
+            </div>
+          </div>
+          <Textarea 
+            name="content" 
+            defaultValue={lesson.content} 
+            rows={20} 
+            className="border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md p-4 font-mono text-sm leading-relaxed bg-[#fbfbfa] resize-y" 
+            required 
+          />
+        </div>
+
+        {/* Nút lưu */}
+        <div className="pt-6 border-t border-notion-border">
+          <button type="submit" className="flex items-center justify-center gap-2 w-full h-12 bg-zinc-900 text-white rounded-md text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm">
+            <Save className="w-4 h-4" /> Lưu thay đổi
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+</file>
+
 <file path="app/api/auth/[...nextauth]/route.ts">
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -1585,468 +1385,730 @@ const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
 </file>
 
+<file path="app/providers.tsx">
+'use client';
+
+import { SessionProvider } from 'next-auth/react';
+import { ThemeProvider } from 'next-themes';
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <SessionProvider>{children}</SessionProvider>
+    </ThemeProvider>
+  );
+}
+</file>
+
+<file path="app/register/page.tsx">
+'use client';
+
+import { registerUser } from '@/lib/actions';
+import Link from 'next/link';
+import { toast } from 'sonner';
+
+export default function RegisterPage() {
+  const handleSubmit = async (formData: FormData) => {
+    try {
+      await registerUser(formData);
+      toast.success("Đăng ký thành công! Chuyển sang đăng nhập...");
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white p-4 animate-in fade-in duration-500">
+      <div className="w-full max-w-sm space-y-8">
+        
+        <div className="text-center space-y-2">
+          <div className="text-5xl mb-6">🎓</div>
+          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Create an account</h1>
+          <p className="text-sm text-zinc-500 font-medium">Bắt đầu xây dựng Workspace của mày.</p>
+        </div>
+
+        <form action={handleSubmit} className="space-y-5">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Họ và tên</label>
+            <input 
+              name="name" 
+              placeholder="Nguyễn Văn A" 
+              required 
+              className="w-full h-11 px-3 bg-transparent border border-notion-border rounded-md text-sm focus:outline-none focus:border-zinc-400 transition-colors" 
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Email</label>
+            <input 
+              name="email" 
+              type="email" 
+              placeholder="a.nguyen@gmail.com" 
+              required 
+              className="w-full h-11 px-3 bg-transparent border border-notion-border rounded-md text-sm focus:outline-none focus:border-zinc-400 transition-colors" 
+            />
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mật khẩu</label>
+            <input 
+              name="password" 
+              type="password" 
+              placeholder="••••••••" 
+              required 
+              className="w-full h-11 px-3 bg-transparent border border-notion-border rounded-md text-sm focus:outline-none focus:border-zinc-400 transition-colors" 
+            />
+          </div>
+          
+          <button 
+            type="submit" 
+            className="w-full h-11 bg-zinc-900 text-white font-medium rounded-md hover:bg-zinc-800 transition-colors text-sm flex items-center justify-center"
+          >
+            Create account
+          </button>
+        </form>
+
+        <div className="text-center pt-4 border-t border-notion-border">
+          <p className="text-sm text-zinc-500">
+            Đã có tài khoản?{' '}
+            <Link href="/login" className="font-bold text-zinc-900 hover:underline">
+              Đăng nhập
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="app/vault/page.tsx">
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import { BookOpen, Plus } from 'lucide-react';
+
+export default async function VaultPage() {
+  // Lấy toàn bộ bài học từ Database, bài mới nhất hiện lên đầu
+  const lessons = await prisma.lesson.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Header chuẩn Notion */}
+      <header className="flex justify-between items-end border-b border-notion-border pb-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
+            <span className="text-4xl">📚</span> The Vault
+          </h1>
+          <p className="text-zinc-500 font-medium text-sm">
+            Kho lưu trữ bài học HSG & IELTS. Chinh phục từng bài một nhé.
+          </p>
+        </div>
+        
+        {/* Nút thêm bài mới */}
+        <Link 
+          href="/admin/add-lesson" 
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-notion-border hover:bg-notion-hover text-zinc-700 rounded-md text-sm font-medium transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4" /> Thêm bài mới
+        </Link>
+      </header>
+
+      {/* Lưới danh sách bài học (Notion Gallery View) */}
+      {lessons.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 border border-dashed border-notion-border rounded-xl bg-zinc-50/50">
+          <span className="text-4xl mb-4">📭</span>
+          <p className="text-zinc-500 font-medium">Chưa có bài học nào được đăng.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {lessons.map((lesson) => (
+            <Link key={lesson.id} href={`/lessons/${lesson.id}`} className="block group">
+              <div className="h-full border border-notion-border rounded-xl p-5 hover:bg-notion-hover transition-colors bg-white shadow-sm flex flex-col cursor-pointer">
+                
+                <div className="flex justify-between items-start mb-4">
+                  <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded uppercase tracking-wider">
+                    {lesson.type}
+                  </span>
+                  <span className="text-xs text-zinc-400 font-medium">
+                    {new Date(lesson.createdAt).toLocaleDateString('vi-VN')}
+                  </span>
+                </div>
+                
+                <h3 className="text-lg font-bold text-zinc-900 group-hover:text-blue-600 transition-colors mb-2 line-clamp-2">
+                  {lesson.title}
+                </h3>
+                
+                <p className="text-sm text-zinc-500 mt-auto flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-zinc-400" /> {lesson.category}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="components/FlashcardItem.tsx">
+'use client';
+
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { Trash2, RotateCw } from 'lucide-react';
+import { deleteVocabulary } from '@/lib/actions';
+import { toast } from 'sonner';
+
+export function FlashcardItem({ word, meaning, index, id }: { word: string; meaning: string; index: number; id: string }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Xóa từ "${word}"?`)) {
+      try {
+        await deleteVocabulary(id);
+        toast.success("Đã xóa!");
+      } catch (error) {
+        toast.error("Lỗi xóa từ.");
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="perspective-1000 h-64 w-full cursor-pointer group"
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      <div className={cn(
+        "relative h-full w-full transition-all duration-500 preserve-3d shadow-sm rounded-xl border border-notion-border",
+        isFlipped ? "rotate-y-180" : ""
+      )}>
+        
+        {/* MẶT TRƯỚC: TIẾNG ANH */}
+        <div className="absolute inset-0 backface-hidden flex flex-col items-center justify-center bg-white p-6 rounded-xl">
+          <span className="absolute top-4 left-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+            #{index + 1}
+          </span>
+          <h3 className="text-2xl font-bold text-zinc-800 text-center leading-tight">
+            {word}
+          </h3>
+          <div className="mt-4 flex items-center gap-1 text-zinc-400 text-[10px] font-bold uppercase">
+            <RotateCw className="w-3 h-3" /> Tap to flip
+          </div>
+          
+          <button onClick={handleDelete} className="absolute top-4 right-4 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-50 rounded text-red-400 transition-all">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* MẶT SAU: NGHĨA (Xoay 180 độ) */}
+        <div className="absolute inset-0 backface-hidden rotate-y-180 flex flex-col items-center justify-center bg-[#fbfbfa] p-6 rounded-xl border-2 border-blue-100">
+          <span className="absolute top-4 left-4 text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+            Meaning
+          </span>
+          <p className="text-xl font-medium text-zinc-700 text-center leading-relaxed">
+            {meaning}
+          </p>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="app/admin/add-lesson/page.tsx">
+'use client';
+
+import { createLesson } from '@/lib/actions';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { useState } from 'react';
+import Link from 'next/link';
+import { ChevronLeft, Plus, Info } from 'lucide-react';
+
+export default function AddLessonPage() {
+  const [lessonType, setLessonType] = useState('');
+
+  return (
+    <div className="max-w-3xl space-y-8 animate-in fade-in duration-500 pb-20">
+      
+      {/* Header Navigation */}
+      <div className="flex items-center justify-between text-sm text-zinc-500 mb-8">
+        <Link href="/vault" className="flex items-center gap-1 hover:text-zinc-900 transition-colors">
+          <ChevronLeft className="w-4 h-4" /> Quay lại kho
+        </Link>
+      </div>
+
+      <div className="space-y-2 border-b border-notion-border pb-6">
+        <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
+          <span className="text-4xl">📄</span> Thêm bài học mới
+        </h1>
+        <p className="text-zinc-500 font-medium text-sm">
+          Tạo tài liệu mới cho The Vault.
+        </p>
+      </div>
+
+      <form action={createLesson} className="space-y-6">
+        <input type="hidden" name="type" value={lessonType} />
+
+        {/* Tiêu đề */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tiêu đề bài học</label>
+          <Input 
+            name="title" 
+            placeholder="VD: 50 Idioms thông dụng..." 
+            className="h-12 border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md text-lg font-medium" 
+            required 
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Loại bài học */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Loại</label>
+            <Select onValueChange={setLessonType} required>
+              <SelectTrigger className="h-12 w-full border-notion-border bg-transparent rounded-md focus:ring-1 focus:ring-zinc-300 flex items-center justify-between px-3">
+                {/* Đảm bảo SelectValue nằm trong một container sạch sẽ */}
+                <div className="truncate flex-1 text-left">
+                  <SelectValue placeholder="Chọn loại bài học..." />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="IELTS">IELTS</SelectItem>
+                <SelectItem value="HSG">Học sinh giỏi</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Phân mục */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Phân mục</label>
+            <Input 
+              name="category" 
+              placeholder="VD: Idioms, Vocab..." 
+              className="h-12 border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md" 
+              required 
+            />
+          </div>
+        </div>
+
+        {/* Nội dung chính */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Nội dung bài học</label>
+            <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-medium bg-zinc-100 px-2 py-1 rounded">
+              <Info className="h-3 w-3" /> Định dạng: Từ vựng : Nghĩa
+            </div>
+          </div>
+          <Textarea 
+            name="content" 
+            placeholder="favorable : thuận lợi&#10;advocate : biện hộ&#10;..." 
+            rows={20} 
+            className="border-notion-border focus-visible:ring-1 focus-visible:ring-zinc-300 rounded-md p-4 font-mono text-sm leading-relaxed bg-[#fbfbfa] resize-y" 
+            required 
+          />
+        </div>
+
+        {/* Nút lưu */}
+        <div className="pt-6 border-t border-notion-border">
+          <button type="submit" className="flex items-center justify-center gap-2 w-full h-12 bg-zinc-900 text-white rounded-md text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm">
+            <Plus className="w-4 h-4" /> Đăng bài học
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+</file>
+
 <file path="app/dictionary/page.tsx">
 'use client';
 
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Search, 
-  Volume2, 
-  Plus, 
-  ExternalLink, 
-  GraduationCap, 
-  Image as ImageIcon, 
-  Lightbulb,
-  Library,
-  ArrowRight
-} from 'lucide-react';
-import { saveVocabulary, searchLocalVault } from '../../lib/actions';
+import { Search, BookOpen, Plus } from 'lucide-react';
+import { saveVocabulary } from '@/lib/actions';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react'; 
-import Link from 'next/link';
 
-/**
- * Smart Dictionary Page - Cambridge Edition with Idiom Support
- * @returns {JSX.Element}
- */
 export default function DictionaryPage() {
-  const { data: session } = useSession(); 
   const [word, setWord] = useState('');
   const [result, setResult] = useState<any>(null);
-  const [localResults, setLocalResults] = useState<any[]>([]);
-  const [imageUrl, setImageUrl] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!word) return;
-    setLoading(true);
-    setLocalResults([]); // Reset kết quả cũ
-    
-    try {
-      // 1. TÌM TRONG KHO BÀI HỌC (Dành cho Idioms/Phrases)
-      const local = await searchLocalVault(word);
-      setLocalResults(local);
-
-      // 2. TRA TỪ ĐIỂN NGOẠI (Dành cho từ đơn)
-      const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      const dictData = await dictRes.json();
-
-      // 3. TRA HÌNH ẢNH
-      const imgRes = await fetch(
-        `https://api.unsplash.com/search/photos?query=${word}&client_id=${process.env.NEXT_PUBLIC_UNSPLASH_KEY}&per_page=1`
-      );
-      const imgData = await imgRes.json();
-
-      if (dictRes.ok) {
-        setResult(dictData[0]);
-        setImageUrl(imgData.results[0]?.urls?.regular || '');
-      } else {
-        setResult(null);
-        if (local.length === 0) {
-          toast.error("Không tìm thấy từ hoặc Idiom này!");
-        }
-      }
-    } catch (error) {
-      toast.error("Lỗi kết nối hệ thống.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const playAudio = (type: 'uk' | 'us') => {
-    const audio = result?.phonetics.find((p: any) => p.audio?.includes(type))?.audio 
-               || result?.phonetics.find((p: any) => p.audio)?.audio;
-    if (audio) new Audio(audio).play();
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+    const data = await res.json();
+    if (res.ok) setResult(data[0]);
+    else toast.error("Không tìm thấy từ này!");
   };
 
   return (
-    <main className="min-h-screen bg-[#F0F2F5] pb-20">
-      {/* CAMBRIDGE HEADER */}
-      <div className="bg-[#003366] pt-16 pb-20 px-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 opacity-10">
-          <GraduationCap className="h-64 w-64 -rotate-12 translate-x-20 -translate-y-10 text-white" />
-        </div>
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h1 className="text-4xl font-serif font-bold text-white mb-8 flex items-center justify-center gap-3">
-            Cambridge Visual Dictionary
-          </h1>
-          <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto">
-            <Input 
-              value={word}
-              onChange={(e) => setWord(e.target.value)}
-              placeholder="Tra từ hoặc Idioms (VD: pull your socks up)..." 
-              className="h-16 pl-14 pr-36 rounded-2xl border-none shadow-2xl text-xl focus-visible:ring-yellow-400"
-            />
-            <Search className="absolute left-5 top-5 h-6 w-6 text-zinc-400" />
-            <Button type="submit" disabled={loading} className="absolute right-2 top-2 h-12 bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold rounded-xl px-8">
-              {loading ? '...' : 'SEARCH'}
-            </Button>
-          </form>
-        </div>
-      </div>
+    // Bỏ mx-auto ở đây
+    <div className="max-w-3xl space-y-8 animate-in fade-in duration-500">
+      <header className="space-y-2">
+        <h1 className="text-4xl font-bold flex items-center gap-3">
+          <span className="text-4xl">📖</span> Dictionary
+        </h1>
+        <p className="text-zinc-500">Tra cứu từ vựng chuẩn Cambridge Academic.</p>
+      </header>
 
-      <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
-        
-        {/* PHẦN 1: KẾT QUẢ TỪ KHO BÀI HỌC (THE VAULT) */}
-        {localResults.length > 0 && (
-          <div className="mb-10 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center gap-2 text-[#003366]">
-              <Library className="h-5 w-5" />
-              <h3 className="font-black uppercase tracking-widest text-xs">Found in your Lessons</h3>
-            </div>
-            <div className="grid gap-3">
-              {localResults.map((res) => (
-                <Link href={`/lessons/${res.id}`} key={res.id}>
-                  <Card className="border-l-4 border-l-yellow-400 hover:bg-white transition-all cursor-pointer shadow-md group">
-                    <CardContent className="p-5 flex justify-between items-center">
-                      <div>
-                        <p className="font-bold text-lg text-zinc-800 group-hover:text-blue-600 transition-colors">
-                          {res.matchedContent}
-                        </p>
-                        <p className="text-xs text-zinc-400 mt-1">Nguồn: {res.title} • {res.type}</p>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-zinc-300 group-hover:translate-x-1 transition-transform" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+      <form onSubmit={handleSearch} className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+        <Input 
+          value={word}
+          onChange={(e) => setWord(e.target.value)}
+          placeholder="Type a word to search..." 
+          className="h-12 pl-10 bg-notion-sidebar border-notion-border focus:ring-1 focus:ring-zinc-300 rounded-lg text-lg"
+        />
+      </form>
+
+      {result && (
+        <div className="space-y-6 border-t border-notion-border pt-8">
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-5xl font-bold text-zinc-900">{result.word}</h2>
+            <span className="text-xl text-zinc-400 font-mono">{result.phonetic}</span>
           </div>
-        )}
 
-        {/* PHẦN 2: KẾT QUẢ TỪ ĐIỂN QUỐC TẾ */}
-        {result && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-xl rounded-[32px] bg-white p-8">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-6xl font-serif font-bold text-[#003366] mb-4">{result.word}</h2>
-                    <div className="flex gap-4">
-                      <div className="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-lg">
-                        <span className="text-[10px] font-black text-red-600">UK</span>
-                        <Volume2 onClick={() => playAudio('uk')} className="h-4 w-4 text-red-600 cursor-pointer" />
-                        <span className="text-sm font-mono text-zinc-500">{result.phonetic}</span>
-                      </div>
-                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg">
-                        <span className="text-[10px] font-black text-blue-600">US</span>
-                        <Volume2 onClick={() => playAudio('us')} className="h-4 w-4 text-blue-600 cursor-pointer" />
-                      </div>
-                    </div>
-                  </div>
-                  <a href={`https://dictionary.cambridge.org/dictionary/english/${result.word}`} target="_blank">
-                    <Button variant="outline" className="rounded-full gap-2 border-zinc-200 text-zinc-500">
-                      Full Cambridge <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  </a>
-                </div>
-              </Card>
-
-              {result.meanings.map((m: any, i: number) => (
-                <div key={i} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-zinc-900 text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">{m.partOfSpeech}</span>
-                    <div className="h-px flex-1 bg-zinc-200"></div>
-                  </div>
-                  {m.definitions.slice(0, 2).map((def: any, di: number) => (
-                    <Card key={di} className="border-none shadow-sm rounded-2xl bg-white group">
-                      <CardContent className="p-6 flex justify-between gap-4">
-                        <div>
-                          <p className="text-lg text-zinc-800 leading-relaxed mb-3 font-medium">{def.definition}</p>
-                          {def.example && (
-                            <div className="flex gap-2 text-zinc-500 italic bg-zinc-50 p-4 rounded-xl border-l-4 border-blue-600">
-                              <Lightbulb className="h-4 w-4 text-blue-600 shrink-0" />
-                              <p>"{def.example}"</p>
-                            </div>
-                          )}
-                        </div>
-                        <Button onClick={() => saveVocabulary(result.word, def.definition)} variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 text-blue-600 rounded-full">
-                          <Plus className="h-5 w-5" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 space-y-6">
-                <Card className="border-none shadow-2xl rounded-[32px] overflow-hidden bg-white">
-                  <div className="p-4 border-b border-zinc-50 flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Visual Aid</span>
-                  </div>
-                  {imageUrl ? (
-                    <img src={imageUrl} alt={word} className="w-full h-64 object-cover" />
-                  ) : (
-                    <div className="h-64 bg-zinc-100 flex items-center justify-center text-zinc-300 italic text-sm">No image found</div>
-                  )}
-                </Card>
-                
-                <div className="p-6 bg-yellow-50 rounded-[32px] border border-yellow-100">
-                  <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4" /> Tip for {session?.user?.name || 'Học viên'}
-                  </h4>
-                  <p className="text-sm text-yellow-700 leading-relaxed">
-                    Dân ôn HSG nên chú ý các ví dụ (Examples) để học cách dùng từ trong ngữ cảnh (Context).
-                  </p>
-                </div>
+          {result.meanings.map((m: any, i: number) => (
+            <div key={i} className="space-y-4">
+              <div className="text-xs font-bold uppercase tracking-widest text-blue-500 bg-blue-50 w-fit px-2 py-0.5 rounded">
+                {m.partOfSpeech}
               </div>
+              {m.definitions.slice(0, 2).map((def: any, di: number) => (
+                <div key={di} className="group flex justify-between gap-4 p-4 hover:bg-notion-hover rounded-xl transition-colors">
+                  <div className="space-y-2">
+                    <p className="text-lg text-zinc-800 leading-relaxed">{def.definition}</p>
+                    {def.example && <p className="text-sm text-zinc-500 italic">"{def.example}"</p>}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      saveVocabulary(result.word, def.definition);
+                      toast.success("Đã lưu vào Flashcards!");
+                    }}
+                    className="h-8 w-8 flex items-center justify-center bg-white border border-notion-border rounded-lg shadow-sm opacity-0 group-hover:opacity-100 hover:bg-zinc-50 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
-      </div>
-    </main>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 </file>
 
-<file path="app/flashcards/page.tsx">
+<file path="app/lessons/[id]/page.tsx">
 import { prisma } from '@/lib/prisma';
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { ChevronLeft, BookOpen, Settings2, CheckCircle2 } from 'lucide-react';
+import { SaveVocabButton } from '@/components/SaveVocabButton';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { FlashcardItem } from '@/components/FlashcardItem';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { ChevronLeft, Library, BrainCircuit } from 'lucide-react';
 
-export default async function FlashcardsPage() {
+export default async function LessonDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  
   const session = await getServerSession(authOptions);
-  if (!session) return <div className="p-20 text-center font-bold">Đăng nhập đi em trai!</div>;
+  const isAdmin = (session?.user as any)?.role === 'ADMIN';
 
-  const vocabs = await prisma.vocabulary.findMany({
-    where: { user: { email: session.user?.email! } },
-    orderBy: { createdAt: 'desc' }
+  const lesson = await prisma.lesson.findUnique({ where: { id } });
+  if (!lesson) notFound();
+
+  // FIX: Gắn (line: string) vào đây
+  const items = lesson.content.split('\n').filter((line: string) => line.trim() !== '').map((line: string) => {
+    const [word, ...meaningParts] = line.split(':');
+    return {
+      word: word?.trim() || "N/A",
+      meaning: meaningParts.join(':')?.trim() || "Chưa có nghĩa"
+    };
   });
 
   return (
-    <main className="min-h-screen bg-[#FBFBFE] pb-20">
-      {/* Top Navigation */}
-      <div className="bg-white border-b border-zinc-100 sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-zinc-900">
-              <ChevronLeft className="mr-2 h-4 w-4" /> Trang chủ
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
-            <BrainCircuit className="h-4 w-4 text-blue-600" />
-            <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Study Mode</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 mt-12">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-zinc-900 rounded-lg">
-                <Library className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-4xl font-black text-zinc-900 tracking-tight">My Flashcards</h1>
-            </div>
-            <p className="text-zinc-500 font-medium">
-              Mày đang có <span className="text-blue-600 font-bold">{vocabs.length}</span> từ vựng cần ghi nhớ.
-            </p>
-          </div>
-          
-          <Link href="/vault">
-            <Button className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl px-6">
-              Lấy thêm từ mới
-            </Button>
-          </Link>
-        </div>
+    <div className="w-full space-y-10 animate-in fade-in duration-500 pb-20">
+      
+      <div className="flex items-center justify-between text-sm text-zinc-500 mb-8">
+        <Link href="/vault" className="flex items-center gap-1 hover:text-zinc-900 transition-colors">
+          <ChevronLeft className="w-4 h-4" /> Quay lại kho
+        </Link>
         
-        {/* Grid Section */}
-        {vocabs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {vocabs.map((v, index) => (
-              <FlashcardItem 
-                key={v.id} 
-                id={v.id}      // QUAN TRỌNG: Phải truyền ID vào đây
-                word={v.word} 
-                meaning={v.meaning} 
-                index={index} 
-            />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[40px] border-2 border-dashed border-zinc-100">
-            <div className="bg-zinc-50 p-6 rounded-full mb-6">
-              <Library className="h-12 w-12 text-zinc-200" />
-            </div>
-            <p className="text-zinc-400 font-bold text-xl">Kho từ vựng đang trống rỗng</p>
-            <p className="text-zinc-400 text-sm mt-2">Vào "The Vault" và bấm nút (+) để thêm từ nhé.</p>
-          </div>
+        {isAdmin && (
+          <Link href={`/admin/edit-lesson/${id}`} className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+            <Settings2 className="w-4 h-4" /> Edit page
+          </Link>
         )}
       </div>
-    </main>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-5xl">📖</span>
+          <span className="px-2 py-1 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded uppercase tracking-wider">
+            {lesson.type} • {lesson.category}
+          </span>
+        </div>
+        <h1 className="text-5xl font-bold text-zinc-900 leading-tight">
+          {lesson.title}
+        </h1>
+        <p className="text-zinc-400 flex items-center gap-2 border-b border-notion-border pb-6">
+          <BookOpen className="w-4 h-4" /> {items.length} từ vựng
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+        {/* FIX: Gắn type cho item và index */}
+        {items.map((item: { word: string; meaning: string }, index: number) => (
+          <div 
+            key={index} 
+            className="group relative flex flex-col justify-between p-5 rounded-xl border border-notion-border bg-white hover:border-zinc-300 hover:shadow-sm transition-all h-full"
+          >
+            <div>
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  Term #{index + 1}
+                </span>
+                
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity -mt-2 -mr-2">
+                  <SaveVocabButton word={item.word} meaning={item.meaning} />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900 mb-4">
+                {item.word}
+              </h3>
+            </div>
+            
+            <div className="border-t border-notion-border pt-3 mt-auto">
+              <p className="text-sm text-zinc-600 leading-relaxed">
+                {item.meaning}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-10 border-t border-notion-border">
+        <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-md text-sm font-medium hover:bg-zinc-800 transition-colors">
+          <CheckCircle2 className="w-4 h-4" /> Đánh dấu đã học
+        </button>
+      </div>
+    </div>
   );
 }
 </file>
 
-<file path="app/globals.css">
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+<file path="app/login/page.tsx">
+'use client';
 
-@custom-variant dark (&:is(.dark *));
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { toast } from 'sonner';
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+export default function LoginPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const res = await signIn('credentials', {
+      redirect: false,
+      email: formData.get('email'),
+      password: formData.get('password'),
+    });
+
+    if (res?.error) {
+      toast.error("Sai email hoặc mật khẩu!");
+      setIsLoading(false);
+    } else {
+      router.push('/');
+      router.refresh();
+    }
+  };
+
+  return (
+    <div className="h-full w-full flex items-center justify-center bg-notion-bg animate-in fade-in duration-500">
+      <div className="w-full max-w-sm px-6 space-y-8">
+        <div className="text-center space-y-2">
+          <div className="text-6xl mb-6">🔐</div>
+          <h1 className="text-3xl font-bold text-notion-text tracking-tighter">Log in</h1>
+          <p className="text-sm text-zinc-500">Chào mừng mày quay lại hệ thống.</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Email</label>
+            <input name="email" type="email" placeholder="admin@gmail.com" required 
+              className="w-full h-11 px-3 bg-notion-sidebar border border-notion-border rounded-lg text-sm focus:outline-none focus:border-zinc-500 text-notion-text" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Password</label>
+            <input name="password" type="password" placeholder="••••••••" required 
+              className="w-full h-11 px-3 bg-notion-sidebar border border-notion-border rounded-lg text-sm focus:outline-none focus:border-zinc-500 text-notion-text" />
+          </div>
+          <button type="submit" disabled={isLoading} className="w-full h-11 bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 text-white font-bold rounded-lg hover:opacity-90 transition-all text-sm">
+            {isLoading ? 'Authenticating...' : 'Continue'}
+          </button>
+        </form>
+
+        <div className="text-center pt-4 border-t border-notion-border">
+          <p className="text-sm text-zinc-500">Chưa có tài khoản? <Link href="/register" className="font-bold text-notion-text hover:underline">Đăng ký</Link></p>
+        </div>
+      </div>
+    </div>
+  );
 }
+</file>
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
+<file path="components/Sidebar.tsx">
+'use client';
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { 
+  Search, 
+  Moon, 
+  Sun, 
+  PlusCircle, 
+  Library, 
+  BrainCircuit, 
+  ChevronLeft,
+  LogIn,
+  LogOut
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useSession, signOut } from 'next-auth/react';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
+
+/**
+ * Sidebar component following Google Coding Convention and Notion's aesthetic.
+ * Handles navigation, theme switching, and authentication state.
+ */
+export function Sidebar() {
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted to prevent hydration mismatch for theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Hide sidebar on authentication pages to provide a clean focus area
+  if (pathname === '/login' || pathname === '/register') {
+    return null;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+  return (
+    <aside className="w-64 h-screen bg-notion-sidebar border-r border-notion-border flex flex-col group transition-all duration-300">
+      {/* User Profile Section */}
+      <div className="p-4 flex items-center justify-between hover:bg-notion-hover cursor-pointer transition-colors">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="w-5 h-5 bg-blue-500 rounded text-[10px] flex items-center justify-center text-white font-bold shrink-0">
+            {session?.user?.name?.charAt(0) || 'G'}
+          </div>
+          <span className="text-sm font-medium truncate text-notion-text">
+            {session?.user?.name || 'Guest'}
+          </span>
+        </div>
+        <ChevronLeft className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
+      {/* Main Navigation */}
+      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
+        {/* Global Search */}
+        <Link 
+          href="/dictionary" 
+          className={cn(
+            "flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-notion-text hover:bg-notion-hover transition-colors",
+            pathname === '/dictionary' && "bg-notion-hover font-medium"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4" />
+            <span>Search</span>
+          </div>
+          <span className="text-[10px] text-zinc-400">⌘K</span>
+        </Link>
+        
+        {/* Theme Toggle Button */}
+        {mounted && (
+          <button 
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm text-notion-text hover:bg-notion-hover transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </div>
+          </button>
+        )}
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-}
-.perspective-1000 {
-  perspective: 1000px;
-}
-.preserve-3d {
-  transform-style: preserve-3d;
-}
-.backface-hidden {
-  backface-visibility: hidden;
-}
-.rotate-y-180 {
-  transform: rotateY(180px);
+        {/* Workspace Decks Section */}
+        <div className="mt-8 mb-2 px-2 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">
+          Workspace
+        </div>
+
+        {[
+          { name: 'The Vault', icon: Library, href: '/vault', emoji: '📚' },
+          { name: 'Flashcards', icon: BrainCircuit, href: '/flashcards', emoji: '🧠' }
+        ].map((item) => (
+          <Link 
+            key={item.name} 
+            href={item.href} 
+            className={cn(
+              "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-notion-text hover:bg-notion-hover transition-colors",
+              pathname === item.href && "bg-notion-hover font-medium text-zinc-900"
+            )}
+          >
+            <span className="w-4 text-center">{item.emoji}</span>
+            <span>{item.name}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {/* Authentication Footer Action */}
+      <div className="p-2 border-t border-notion-border mt-auto">
+        {session ? (
+          // Authenticated: Show Logout
+          <button 
+            onClick={() => signOut({ callbackUrl: '/login' })} 
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-red-500 hover:bg-notion-hover transition-colors font-medium"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Log out</span>
+          </button>
+        ) : (
+          // Guest: Show Login
+          <Link 
+            href="/login"
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-blue-600 hover:bg-notion-hover transition-colors font-medium"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Log in</span>
+          </Link>
+        )}
+      </div>
+    </aside>
+  );
 }
 </file>
 
@@ -2055,193 +2117,218 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    // Ép Vercel build bất chấp lỗi TypeScript vặt
     ignoreBuildErrors: true,
   },
   eslint: {
-    // Ép Vercel build bất chấp lỗi Linting
     ignoreDuringBuilds: true,
-  },
-  // Hỗ trợ cấu trúc thư mục không có src/
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        "@/*": ["./*"],
-      },
-    },
   },
 };
 
 export default nextConfig;
 </file>
 
-<file path="app/page.tsx">
+<file path="app/flashcards/page.tsx">
+import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { 
-  LogOut, 
-  User as UserIcon, 
-  BookText, 
-  BrainCircuit, 
-  Library, 
-  PlusCircle, 
-  Search,
-  GraduationCap
-} from 'lucide-react';
+import { createDeck } from '@/lib/actions';
+import { Folder, Play, Plus } from 'lucide-react';
 
-/**
- * Trang chủ English Mastery Hub - Dashboard tổng hợp.
- * Tuân thủ chuẩn Server Component của Next.js 15/16.
- */
-export default async function HomePage() {
-  // Lấy session kèm theo authOptions để check Role
+export default async function FlashcardsPage() {
   const session = await getServerSession(authOptions);
-  const isAdmin = (session?.user as any)?.role === 'ADMIN';
+  if (!session) return <div>Đăng nhập đi em trai</div>;
+
+  // Lấy các Deck của user
+  const decks = await prisma.deck.findMany({
+    where: { user: { email: session.user?.email! } },
+    include: { _count: { select: { vocabularies: true } } },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // Lấy từ vựng mồ côi (chưa nhét vào Deck nào)
+  const uncategorizedCount = await prisma.vocabulary.count({
+    where: { user: { email: session.user?.email! }, deckId: null }
+  });
 
   return (
-    <main className="min-h-screen bg-[#FBFBFE] pb-20">
-      {/* NAVBAR CỰC SANG */}
-      <nav className="bg-white border-b border-zinc-100 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-blue-600" />
-            <span className="font-black text-xl tracking-tighter text-zinc-900">LearnWithKhanh.</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {isAdmin && (
-              <Link href="/admin/add-lesson">
-                <Button variant="ghost" size="sm" className="text-blue-600 font-bold">
-                  <PlusCircle className="size-4 mr-2" /> Thêm bài học
-                </Button>
-              </Link>
-            )}
-            
-            {session ? (
-              <div className="flex items-center gap-3">
-                <div className="hidden md:flex flex-col items-end">
-                  <span className="text-xs font-bold text-zinc-900">{session.user?.name}</span>
-                  <span className="text-[10px] text-zinc-400 uppercase font-black">{(session.user as any).role}</span>
-                </div>
-                <Link href="/api/auth/signout">
-                  <Button variant="outline" size="icon" className="rounded-full border-zinc-200">
-                    <LogOut className="size-4 text-red-500" />
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <Link href="/login">
-                <Button className="bg-blue-600 hover:bg-blue-700 rounded-full px-6">Đăng nhập</Button>
-              </Link>
-            )}
-          </div>
+    <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
+      {/* Sửa lại Header của app/flashcards/page.tsx */}
+      <header className="flex justify-between items-end border-b border-notion-border pb-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
+            <span className="text-4xl">🗂️</span> Decks
+          </h1>
+          <p className="text-zinc-500 font-medium text-sm">
+            Tạo nhóm từ vựng và bắt đầu Focus Mode.
+          </p>
         </div>
-      </nav>
 
-      {/* HERO SECTION */}
-      <div className="max-w-4xl mx-auto text-center pt-20 pb-16 px-6">
-        <h1 className="text-5xl md:text-7xl font-black text-zinc-900 mb-6 tracking-tight">
-          Master English <br />
-          <span className="text-blue-600">Every Single Day.</span>
-        </h1>
-        <p className="text-lg text-zinc-500 mb-10 max-w-2xl mx-auto font-medium">
-          Hệ thống ôn luyện HSG & IELTS chuyên nghiệp dành riêng cho anh em mình. 
-          Tra cứu chuẩn Cambridge, lưu từ vựng thông minh.
-        </p>
+        <Link href="/flashcards/manage" className="px-4 py-2 bg-white border border-notion-border hover:bg-notion-hover text-zinc-700 rounded-md text-sm font-medium transition-colors shadow-sm">
+          ⚙️ Quản lý Kho từ
+        </Link>
+      </header>
+
+      {/* Form tạo Deck nhanh */}
+      <form action={createDeck} className="flex gap-2">
+        <input 
+          name="name" 
+          placeholder="Tên nhóm mới (VD: IELTS Reading 1)..." 
+          className="flex-1 max-w-sm h-10 px-3 border border-notion-border rounded-md text-sm focus:outline-none focus:border-zinc-400"
+          required 
+        />
+        <button type="submit" className="h-10 px-4 bg-zinc-900 text-white text-sm font-medium rounded-md hover:bg-zinc-800 flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Tạo Deck
+        </button>
+      </form>
+
+      {/* Grid hiện Decks */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
         
-        <div className="flex flex-wrap justify-center gap-4">
-          <Link href="/dictionary">
-            <Button size="lg" className="h-14 px-8 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-lg font-bold shadow-xl">
-              <Search className="mr-2 h-5 w-5" /> Tra từ điển ngay
-            </Button>
-          </Link>
-          <Link href="/vault">
-            <Button size="lg" variant="outline" className="h-14 px-8 rounded-2xl border-2 text-lg font-bold">
-              Vào kho bài học
-            </Button>
+        {/* Thư mục mặc định */}
+        <div className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col h-40">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Folder className="w-5 h-5" /></div>
+            <div>
+              <h3 className="font-bold text-zinc-900">Chưa phân loại</h3>
+              <p className="text-xs text-zinc-500 mt-1">{uncategorizedCount} từ vựng</p>
+            </div>
+          </div>
+          <Link href="/flashcards/focus?deck=uncategorized" className="mt-auto flex items-center justify-center gap-2 w-full h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-sm font-bold rounded-md transition-colors">
+            <Play className="w-4 h-4 fill-current" /> Bắt đầu học
           </Link>
         </div>
+
+        {/* Thư mục tự tạo */}
+        {decks.map(deck => (
+          <div key={deck.id} className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col h-40">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-zinc-100 text-zinc-600 rounded-lg"><Folder className="w-5 h-5" /></div>
+              <div>
+                <h3 className="font-bold text-zinc-900 line-clamp-1">{deck.name}</h3>
+                <p className="text-xs text-zinc-500 mt-1">{deck._count.vocabularies} từ vựng</p>
+              </div>
+            </div>
+            <Link href={`/flashcards/focus?deck=${deck.id}`} className="mt-auto flex items-center justify-center gap-2 w-full h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-sm font-bold rounded-md transition-colors">
+              <Play className="w-4 h-4 fill-current" /> Bắt đầu học
+            </Link>
+          </div>
+        ))}
       </div>
-
-      {/* MODULES GRID */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 px-6">
-        {/* THE VAULT */}
-        <Link href="/vault">
-          <Card className="group hover:border-blue-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-2xl rounded-[32px] border-none p-4 bg-white">
-            <CardHeader>
-              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-                <Library className="h-6 w-6 text-blue-600 group-hover:text-white" />
-              </div>
-              <CardTitle className="text-2xl font-black">The Vault</CardTitle>
-              <CardDescription className="font-medium">
-                Kho tài liệu HSG & IELTS được phân loại chi tiết.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        {/* FLASHCARDS */}
-        <Link href="/flashcards">
-          <Card className="group hover:border-indigo-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-2xl rounded-[32px] border-none p-4 bg-white">
-            <CardHeader>
-              <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-indigo-600 transition-colors">
-                <BrainCircuit className="h-6 w-6 text-indigo-600 group-hover:text-white" />
-              </div>
-              <CardTitle className="text-2xl font-black">Flashcards</CardTitle>
-              <CardDescription className="font-medium">
-                Ôn tập từ vựng theo phương pháp lặp lại ngắt quãng.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-
-        {/* DICTIONARY QUICK ACCESS */}
-        <Link href="/dictionary">
-          <Card className="group hover:border-yellow-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-2xl rounded-[32px] border-none p-4 bg-white">
-            <CardHeader>
-              <div className="w-12 h-12 bg-yellow-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-yellow-500 transition-colors">
-                <BookText className="h-6 w-6 text-yellow-600 group-hover:text-white" />
-              </div>
-              <CardTitle className="text-2xl font-black">Dictionary</CardTitle>
-              <CardDescription className="font-medium">
-                Tra cứu chuẩn Cambridge Academic kèm phát âm UK/US.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
-      </div>
-    </main>
+    </div>
   );
 }
 </file>
 
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Inter, Lora } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
-import { Providers } from "./providers";
+<file path="app/globals.css">
+@import "tailwindcss";
 
-// Khai báo font
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const lora = Lora({ subsets: ["latin"], variable: "--font-lora" });
+@theme {
+  --color-notion-bg: var(--notion-bg);
+  --color-notion-sidebar: var(--notion-sidebar);
+  --color-notion-hover: var(--notion-hover);
+  --color-notion-border: var(--notion-border);
+  --color-notion-text: var(--notion-text);
+}
 
-export const metadata: Metadata = {
-  title: "English Mastery Hub",
-  description: "Học tiếng Anh chuẩn Cambridge",
-};
+:root {
+  --notion-bg: #ffffff;
+  --notion-sidebar: #fbfbfa;
+  --notion-hover: #efefed;
+  --notion-border: #e9e9e7;
+  --notion-text: #37352f;
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+.dark {
+  --notion-bg: #191919;
+  --notion-sidebar: #202020;
+  --notion-hover: #2f2f2f;
+  --notion-border: #373737;
+  --notion-text: #d4d4d4;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  color: var(--notion-text);
+  background-color: var(--notion-bg);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Fix lỗi lật thẻ 3D */
+.perspective-1000 { perspective: 1000px; }
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.rotate-y-180 { transform: rotateY(180deg); }
+
+/* Scrollbar đẹp */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--notion-border); border-radius: 10px; }
+</file>
+
+<file path="app/page.tsx">
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import Link from 'next/link';
+
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+
   return (
-    <html lang="en" className={`${inter.variable} ${lora.variable} h-full`}>
-      <body className="font-sans antialiased min-h-full flex flex-col bg-[#F8F9FB]">
-        <Providers>{children}</Providers>
-        <Toaster position="top-center" richColors /> 
-      </body>
-    </html>
+    <div className="space-y-12 animate-in fade-in duration-700">
+      {/* Header Section */}
+      <header className="space-y-4">
+        <div className="text-6xl mb-4">🚀</div>
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+          Welcome back, {session?.user?.name || 'Scholar'}
+        </h1>
+        <p className="text-lg text-zinc-500 max-w-2xl leading-relaxed">
+          Hệ thống học tập cá nhân hóa. Hôm nay mày muốn chinh phục thêm bao nhiêu từ vựng mới?
+        </p>
+      </header>
+
+      {/* Quick Links Section */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-notion-border pb-2">
+            Current Focus
+          </h2>
+          <div className="space-y-1">
+            <Link href="/vault" className="block p-2 rounded-lg hover:bg-notion-hover transition-colors group">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">📚</span>
+                <div>
+                  <div className="text-sm font-semibold group-hover:underline">The Vault</div>
+                  <div className="text-xs text-zinc-400">Tiếp tục bài học IELTS Reading còn dang dở</div>
+                </div>
+              </div>
+            </Link>
+            <Link href="/flashcards" className="block p-2 rounded-lg hover:bg-notion-hover transition-colors group">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🧠</span>
+                <div>
+                  <div className="text-sm font-semibold group-hover:underline">Daily Review</div>
+                  <div className="text-xs text-zinc-400">Mày có 15 từ cần ôn tập ngay bây giờ</div>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-notion-border pb-2">
+            Resources
+          </h2>
+          <div className="space-y-1">
+            <Link href="/dictionary" className="block p-2 rounded-lg hover:bg-notion-hover transition-colors group">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">📖</span>
+                <div className="text-sm font-semibold group-hover:underline">Cambridge Dictionary</div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 </file>
@@ -2285,8 +2372,10 @@ export async function updateLesson(id: string, formData: FormData) {
 
 export async function saveVocabulary(word: string, meaning: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) throw new Error("Chưa đăng nhập");
-  const user = await prisma.user.findUnique({ where: { email: session.user.email! } });
+  // FIX: Chặn lỗi session.user is possibly undefined
+  if (!session?.user?.email) throw new Error("Chưa đăng nhập");
+  
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return;
   await prisma.vocabulary.create({ data: { word, meaning, userId: user.id } });
   revalidatePath('/flashcards');
@@ -2294,8 +2383,8 @@ export async function saveVocabulary(word: string, meaning: string) {
 
 export async function deleteVocabulary(id: string) {
   const session = await getServerSession(authOptions);
-  if (!session) throw new Error("Unauthorized");
-  await prisma.vocabulary.delete({ where: { id, user: { email: session.user.email! } } });
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  await prisma.vocabulary.delete({ where: { id, user: { email: session.user.email } } });
   revalidatePath('/flashcards');
 }
 
@@ -2313,12 +2402,63 @@ export async function searchLocalVault(query: string) {
     where: { OR: [{ title: { contains: query, mode: 'insensitive' } }, { content: { contains: query, mode: 'insensitive' } }] },
     take: 5,
   });
-  return lessons.map(l => ({
+  // FIX: Khai báo rõ l là bài học, line là string
+  return lessons.map((l: any) => ({
     id: l.id,
     title: l.title,
-    matchedContent: l.content.split('\n').find(line => line.toLowerCase().includes(query.toLowerCase())) || l.title,
+    matchedContent: l.content.split('\n').find((line: string) => line.toLowerCase().includes(query.toLowerCase())) || l.title,
     type: l.type
   }));
+}
+
+export async function createDeck(formData: FormData) {
+  const name = formData.get('name') as string;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return;
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) return;
+  
+  await prisma.deck.create({ data: { name, userId: user.id } });
+  revalidatePath('/flashcards');
+}
+export async function updateVocabDeck(vocabId: string, deckId: string | null) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  await prisma.vocabulary.update({
+    where: { id: vocabId, user: { email: session.user.email } },
+    data: { deckId }
+  });
+  revalidatePath('/flashcards/manage');
+  revalidatePath('/flashcards');
+}
+
+export async function deleteDeck(deckId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  // Chuyển các từ trong Deck này về "Chưa phân loại" trước khi xóa
+  await prisma.vocabulary.updateMany({
+    where: { deckId, user: { email: session.user.email } },
+    data: { deckId: null }
+  });
+  await prisma.deck.delete({
+    where: { id: deckId, user: { email: session.user.email } }
+  });
+  revalidatePath('/flashcards');
+}
+export async function bulkUpdateVocabDeck(vocabIds: string[], deckId: string | null) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  
+  await prisma.vocabulary.updateMany({
+    where: { 
+      id: { in: vocabIds },
+      user: { email: session.user.email } 
+    },
+    data: { deckId }
+  });
+  
+  revalidatePath('/flashcards/manage');
+  revalidatePath('/flashcards');
 }
 </file>
 
@@ -2371,6 +2511,45 @@ export async function searchLocalVault(query: string) {
 }
 </file>
 
+<file path="app/layout.tsx">
+'use client';
+
+import { Sidebar } from "@/components/Sidebar";
+import { Providers } from "./providers";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
+import { usePathname } from 'next/navigation';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  // Kiểm tra xem có phải trang Auth không
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="flex h-screen overflow-hidden bg-notion-bg text-notion-text">
+        <Providers>
+          {!isAuthPage && <Sidebar />}
+          <main className={`flex-1 overflow-y-auto relative flex flex-col ${isAuthPage ? 'h-full' : ''}`}>
+            {!isAuthPage && (
+              <div className="h-12 shrink-0 flex items-center px-8 text-sm text-zinc-500 border-b border-notion-border">
+                <span>English Mastery Hub</span>
+              </div>
+            )}
+            
+            {/* Nếu là trang Login thì không có padding để nó căn giữa chuẩn */}
+            <div className={`${isAuthPage ? 'h-full w-full' : 'w-full px-8 md:px-16 py-10'}`}>
+              {children}
+            </div>
+          </main>
+        </Providers>
+        <Toaster position="bottom-right" richColors />
+      </body>
+    </html>
+  );
+}
+</file>
+
 <file path="prisma/schema.prisma">
 // 1. Cấu hình công cụ
 generator client {
@@ -2382,37 +2561,33 @@ datasource db {
   provider = "postgresql"
 }
 
-// ... các model User, Lesson, Vocabulary giữ nguyên bên dưới
-
-// ==========================================
-// THIẾT KẾ CÁC BẢNG (TABLES)
-// ==========================================
-
-// Bảng 1: Người dùng (Mày và em trai)
+// Bảng 1: Người dùng
 model User {
   id           String       @id @default(cuid())
   name         String
   email        String       @unique
   password     String 
-  role         Role         @default(STUDENT) // Mặc định ai vào cũng là Học sinh
-  vocabularies Vocabulary[] // Mối quan hệ: 1 User có nhiều Từ vựng
+  role         Role         @default(STUDENT)
+  vocabularies Vocabulary[]
+  decks        Deck[]       // Mối quan hệ: User tạo nhiều Decks
   createdAt    DateTime     @default(now())
 }
 
-// Phân quyền: Mày là ADMIN, em trai là STUDENT
 enum Role {
   ADMIN
   STUDENT
 }
 
-// Bảng 2: Bài học (Kho tài liệu HSG & IELTS)
+// Bảng 2: Bài học
 model Lesson {
   id        String     @id @default(cuid())
-  title     String     // Tên bài học (VD: Unit 1 - Family)
-  content   String     // Nội dung hoặc Link file PDF
-  type      CourseType // Loại khóa học (IELTS hay HSG)
-  category  String     // Phân loại (VD: Reading, Grammar, Idioms)
+  title     String     
+  content   String     
+  type      CourseType 
+  category  String     
   createdAt DateTime   @default(now())
+
+  @@index([createdAt(sort: Desc)])
 }
 
 enum CourseType {
@@ -2420,18 +2595,36 @@ enum CourseType {
   HSG
 }
 
-// Bảng 3: Từ vựng (Flashcard cá nhân)
+// Bảng 3: Nhóm từ vựng (Deck)
+model Deck {
+  id           String       @id @default(cuid())
+  name         String
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  vocabularies Vocabulary[]
+  createdAt    DateTime     @default(now())
+
+  @@index([userId])
+}
+
+// Bảng 4: Từ vựng
 model Vocabulary {
   id        String   @id @default(cuid())
-  word      String   // Từ tiếng Anh
-  meaning   String   // Nghĩa tiếng Việt
-  ipa       String?  // Phiên âm quốc tế (Dấu ? nghĩa là có thể để trống)
+  word      String   
+  meaning   String   
+  ipa       String?  
   
-  // Liên kết từ vựng này thuộc về ai (Mày hay em trai)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   
+  // ĐÂY CHÍNH LÀ DÒNG BỊ LỖI LÚC NÃY, TAO GHI ĐẦY ĐỦ RỒI ĐÓ
+  deckId    String?  
+  deck      Deck?    @relation(fields: [deckId], references: [id]) 
+  
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
 }
 </file>
 

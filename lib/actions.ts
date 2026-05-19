@@ -124,3 +124,79 @@ export async function bulkUpdateVocabDeck(vocabIds: string[], deckId: string | n
   revalidatePath('/flashcards/manage');
   revalidatePath('/flashcards');
 }
+export async function generateQuizData(deckId?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error('Unauthorized');
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) throw new Error('User not found');
+
+  // Lấy toàn bộ từ vựng để làm kho đáp án nhiễu
+  const allVocabs = await prisma.vocabulary.findMany({
+    where: { userId: user.id },
+  });
+
+  if (allVocabs.length < 4) {
+    throw new Error('Cần ít nhất 4 từ vựng trong kho để tạo trắc nghiệm');
+  }
+
+  // Lọc từ vựng theo deck được chọn (nếu có)
+  let targetVocabs = allVocabs;
+  if (deckId && deckId !== 'uncategorized') {
+    targetVocabs = allVocabs.filter(v => v.deckId === deckId);
+  } else if (deckId === 'uncategorized') {
+    targetVocabs = allVocabs.filter(v => v.deckId === null);
+  }
+
+  // Trộn lên và bốc ra 10 câu hỏi
+  const shuffledTargets = targetVocabs.sort(() => 0.5 - Math.random()).slice(0, 10);
+
+  const quizData = shuffledTargets.map(target => {
+    // Bốc 3 nghĩa sai ngẫu nhiên
+    const wrongOptions = allVocabs
+      .filter(v => v.id !== target.id)
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3)
+      .map(v => v.meaning);
+
+    // Ghép đáp án đúng vào và trộn ngẫu nhiên 4 đáp án
+    const options = [...wrongOptions, target.meaning].sort(() => 0.5 - Math.random());
+
+    return {
+      id: target.id,
+      word: target.word,
+      correctMeaning: target.meaning,
+      options,
+    };
+  });
+
+  return quizData;
+}
+
+export async function saveFailedWords(vocabIds: string[]) {
+  if (vocabIds.length === 0) return;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return;
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) return;
+
+  // Tìm hoặc tự tạo thư mục "Từ hay sai"
+  let reviewDeck = await prisma.deck.findFirst({
+    where: { userId: user.id, name: 'Từ hay sai' },
+  });
+
+  if (!reviewDeck) {
+    reviewDeck = await prisma.deck.create({
+      data: { name: 'Từ hay sai', userId: user.id },
+    });
+  }
+
+  // Cập nhật các từ bị sai vào thư mục này để ôn lại sau
+  await prisma.vocabulary.updateMany({
+    where: { id: { in: vocabIds }, userId: user.id },
+    data: { deckId: reviewDeck.id },
+  });
+
+  revalidatePath('/flashcards');
+}
