@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
 import { createDeck } from '@/lib/actions';
-import { Folder, Play, Plus, BrainCircuit } from 'lucide-react';
+import { Folder, Play, Plus, BrainCircuit, Timer } from 'lucide-react';
 
 export default async function FlashcardsPage() {
   const session = await getServerSession(authOptions);
@@ -29,7 +29,7 @@ export default async function FlashcardsPage() {
             <span className="text-4xl">🗂️</span> Decks
           </h1>
           <p className="text-zinc-500 font-medium text-sm">
-            Tạo nhóm từ vựng và bắt đầu Focus Mode hoặc Quiz Mode.
+            Tạo nhóm từ vựng và bắt đầu Focus Mode, Quiz Mode hoặc Time Attack.
           </p>
         </div>
 
@@ -70,6 +70,9 @@ export default async function FlashcardsPage() {
             <Link href="/flashcards/quiz?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-green-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
               <BrainCircuit className="w-4 h-4" /> Quiz
             </Link>
+            <Link href="/flashcards/time-attack?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-orange-500 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+              <Timer className="w-4 h-4" /> Rush
+            </Link>
           </div>
         </div>
 
@@ -89,6 +92,9 @@ export default async function FlashcardsPage() {
               </Link>
               <Link href={`/flashcards/quiz?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-green-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
                 <BrainCircuit className="w-4 h-4" /> Quiz
+              </Link>
+              <Link href={`/flashcards/time-attack?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-orange-500 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+                <Timer className="w-4 h-4" /> Rush
               </Link>
             </div>
           </div>
