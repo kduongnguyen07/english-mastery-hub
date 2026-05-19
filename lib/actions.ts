@@ -36,8 +36,10 @@ export async function updateLesson(id: string, formData: FormData) {
 
 export async function saveVocabulary(word: string, meaning: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) throw new Error("Chưa đăng nhập");
-  const user = await prisma.user.findUnique({ where: { email: session.user.email! } });
+  // FIX: Chặn lỗi session.user is possibly undefined
+  if (!session?.user?.email) throw new Error("Chưa đăng nhập");
+  
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return;
   await prisma.vocabulary.create({ data: { word, meaning, userId: user.id } });
   revalidatePath('/flashcards');
@@ -45,8 +47,8 @@ export async function saveVocabulary(word: string, meaning: string) {
 
 export async function deleteVocabulary(id: string) {
   const session = await getServerSession(authOptions);
-  if (!session) throw new Error("Unauthorized");
-  await prisma.vocabulary.delete({ where: { id, user: { email: session.user.email! } } });
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  await prisma.vocabulary.delete({ where: { id, user: { email: session.user.email } } });
   revalidatePath('/flashcards');
 }
 
@@ -64,10 +66,61 @@ export async function searchLocalVault(query: string) {
     where: { OR: [{ title: { contains: query, mode: 'insensitive' } }, { content: { contains: query, mode: 'insensitive' } }] },
     take: 5,
   });
-  return lessons.map(l => ({
+  // FIX: Khai báo rõ l là bài học, line là string
+  return lessons.map((l: any) => ({
     id: l.id,
     title: l.title,
-    matchedContent: l.content.split('\n').find(line => line.toLowerCase().includes(query.toLowerCase())) || l.title,
+    matchedContent: l.content.split('\n').find((line: string) => line.toLowerCase().includes(query.toLowerCase())) || l.title,
     type: l.type
   }));
+}
+
+export async function createDeck(formData: FormData) {
+  const name = formData.get('name') as string;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return;
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) return;
+  
+  await prisma.deck.create({ data: { name, userId: user.id } });
+  revalidatePath('/flashcards');
+}
+export async function updateVocabDeck(vocabId: string, deckId: string | null) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  await prisma.vocabulary.update({
+    where: { id: vocabId, user: { email: session.user.email } },
+    data: { deckId }
+  });
+  revalidatePath('/flashcards/manage');
+  revalidatePath('/flashcards');
+}
+
+export async function deleteDeck(deckId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  // Chuyển các từ trong Deck này về "Chưa phân loại" trước khi xóa
+  await prisma.vocabulary.updateMany({
+    where: { deckId, user: { email: session.user.email } },
+    data: { deckId: null }
+  });
+  await prisma.deck.delete({
+    where: { id: deckId, user: { email: session.user.email } }
+  });
+  revalidatePath('/flashcards');
+}
+export async function bulkUpdateVocabDeck(vocabIds: string[], deckId: string | null) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  
+  await prisma.vocabulary.updateMany({
+    where: { 
+      id: { in: vocabIds },
+      user: { email: session.user.email } 
+    },
+    data: { deckId }
+  });
+  
+  revalidatePath('/flashcards/manage');
+  revalidatePath('/flashcards');
 }

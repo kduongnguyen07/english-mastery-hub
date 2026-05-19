@@ -63,9 +63,12 @@ export default async function EditLessonPage({
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Loại</label>
             <Select name="type" defaultValue={lesson.type}>
-              <SelectTrigger className="h-12 border-notion-border focus:ring-1 focus:ring-zinc-300 rounded-md bg-transparent">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-12 w-full border-notion-border bg-transparent rounded-md focus:ring-1 focus:ring-zinc-300 flex items-center justify-between px-3">
+                {/* Đảm bảo SelectValue nằm trong một container sạch sẽ */}
+                <div className="truncate flex-1 text-left">
+                    <SelectValue placeholder="Chọn loại bài học..." />
+                </div>
+                </SelectTrigger>
               <SelectContent>
                 <SelectItem value="IELTS">IELTS</SelectItem>
                 <SelectItem value="HSG">Học sinh giỏi</SelectItem>

@@ -15,7 +15,8 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
   const lesson = await prisma.lesson.findUnique({ where: { id } });
   if (!lesson) notFound();
 
-  const items = lesson.content.split('\n').filter(line => line.trim() !== '').map(line => {
+  // FIX: Gắn (line: string) vào đây
+  const items = lesson.content.split('\n').filter((line: string) => line.trim() !== '').map((line: string) => {
     const [word, ...meaningParts] = line.split(':');
     return {
       word: word?.trim() || "N/A",
@@ -24,7 +25,6 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
   });
 
   return (
-    // Đã xóa max-w-5xl, đổi thành w-full
     <div className="w-full space-y-10 animate-in fade-in duration-500 pb-20">
       
       <div className="flex items-center justify-between text-sm text-zinc-500 mb-8">
@@ -54,9 +54,9 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
         </p>
       </div>
 
-      {/* ĐÂY: Thêm xl:grid-cols-4 và 2xl:grid-cols-5 để nó tự nở rộng ra */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-        {items.map((item, index) => (
+        {/* FIX: Gắn type cho item và index */}
+        {items.map((item: { word: string; meaning: string }, index: number) => (
           <div 
             key={index} 
             className="group relative flex flex-col justify-between p-5 rounded-xl border border-notion-border bg-white hover:border-zinc-300 hover:shadow-sm transition-all h-full"

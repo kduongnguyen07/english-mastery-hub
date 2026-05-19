@@ -8,37 +8,33 @@ datasource db {
   provider = "postgresql"
 }
 
-// ... các model User, Lesson, Vocabulary giữ nguyên bên dưới
-
-// ==========================================
-// THIẾT KẾ CÁC BẢNG (TABLES)
-// ==========================================
-
-// Bảng 1: Người dùng (Mày và em trai)
+// Bảng 1: Người dùng
 model User {
   id           String       @id @default(cuid())
   name         String
   email        String       @unique
   password     String 
-  role         Role         @default(STUDENT) // Mặc định ai vào cũng là Học sinh
-  vocabularies Vocabulary[] // Mối quan hệ: 1 User có nhiều Từ vựng
+  role         Role         @default(STUDENT)
+  vocabularies Vocabulary[]
+  decks        Deck[]       // Mối quan hệ: User tạo nhiều Decks
   createdAt    DateTime     @default(now())
 }
 
-// Phân quyền: Mày là ADMIN, em trai là STUDENT
 enum Role {
   ADMIN
   STUDENT
 }
 
-// Bảng 2: Bài học (Kho tài liệu HSG & IELTS)
+// Bảng 2: Bài học
 model Lesson {
   id        String     @id @default(cuid())
-  title     String     // Tên bài học (VD: Unit 1 - Family)
-  content   String     // Nội dung hoặc Link file PDF
-  type      CourseType // Loại khóa học (IELTS hay HSG)
-  category  String     // Phân loại (VD: Reading, Grammar, Idioms)
+  title     String     
+  content   String     
+  type      CourseType 
+  category  String     
   createdAt DateTime   @default(now())
+
+  @@index([createdAt(sort: Desc)])
 }
 
 enum CourseType {
@@ -46,16 +42,34 @@ enum CourseType {
   HSG
 }
 
-// Bảng 3: Từ vựng (Flashcard cá nhân)
+// Bảng 3: Nhóm từ vựng (Deck)
+model Deck {
+  id           String       @id @default(cuid())
+  name         String
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  vocabularies Vocabulary[]
+  createdAt    DateTime     @default(now())
+
+  @@index([userId])
+}
+
+// Bảng 4: Từ vựng
 model Vocabulary {
   id        String   @id @default(cuid())
-  word      String   // Từ tiếng Anh
-  meaning   String   // Nghĩa tiếng Việt
-  ipa       String?  // Phiên âm quốc tế (Dấu ? nghĩa là có thể để trống)
+  word      String   
+  meaning   String   
+  ipa       String?  
   
-  // Liên kết từ vựng này thuộc về ai (Mày hay em trai)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   
+  // ĐÂY CHÍNH LÀ DÒNG BỊ LỖI LÚC NÃY, TAO GHI ĐẦY ĐỦ RỒI ĐÓ
+  deckId    String?  
+  deck      Deck?    @relation(fields: [deckId], references: [id]) 
+  
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
 }
