@@ -53,6 +53,8 @@ app/flashcards/focus/page.tsx
 app/flashcards/manage/ManageClient.tsx
 app/flashcards/manage/page.tsx
 app/flashcards/page.tsx
+app/flashcards/quiz/page.tsx
+app/flashcards/time-attack/page.tsx
 app/globals.css
 app/layout.tsx
 app/lessons/[id]/page.tsx
@@ -65,8 +67,10 @@ CLAUDE.md
 components.json
 components/FlashcardItem.tsx
 components/FocusStudy.tsx
+components/QuizMode.tsx
 components/SaveVocabButton.tsx
 components/Sidebar.tsx
+components/TimeAttack.tsx
 components/ui/button.tsx
 components/ui/card.tsx
 components/ui/input.tsx
@@ -351,6 +355,86 @@ export default async function ManageFlashcardsPage() {
 }
 </file>
 
+<file path="app/flashcards/quiz/page.tsx">
+import { generateQuizData } from '@/lib/actions';
+import { QuizMode } from '@/components/QuizMode';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+
+export default async function QuizPage({
+  searchParams
+}: {
+  searchParams: Promise<{ deck?: string }>
+}) {
+  const { deck } = await searchParams;
+  let questions = [];
+  let errorMsg = null;
+
+  try {
+    questions = await generateQuizData(deck);
+  } catch (e: any) {
+    errorMsg = e.message;
+  }
+
+  return (
+    <div className="w-full animate-in fade-in duration-500 pb-20">
+      <Link href="/flashcards" className="inline-flex items-center gap-2 text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors mb-4 uppercase tracking-widest">
+        <ChevronLeft className="w-4 h-4" /> Thoát Quiz Mode
+      </Link>
+      
+      {errorMsg ? (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500">
+          <span className="text-4xl mb-4">⚠️</span>
+          <p>{errorMsg}</p>
+        </div>
+      ) : (
+        <QuizMode questions={questions} />
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="app/flashcards/time-attack/page.tsx">
+import { generateQuizData } from '@/lib/actions';
+import { TimeAttack } from '@/components/TimeAttack';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+
+export default async function TimeAttackPage({
+  searchParams
+}: {
+  searchParams: Promise<{ deck?: string }>
+}) {
+  const { deck } = await searchParams;
+  let questions = [];
+  let errorMsg = null;
+
+  try {
+    questions = await generateQuizData(deck);
+  } catch (e: any) {
+    errorMsg = e.message;
+  }
+
+  return (
+    <div className="w-full animate-in fade-in duration-500 pb-20">
+      <Link href="/flashcards" className="inline-flex items-center gap-2 text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors mb-4 uppercase tracking-widest">
+        <ChevronLeft className="w-4 h-4" /> Thoát Time Attack
+      </Link>
+      
+      {errorMsg ? (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500">
+          <span className="text-4xl mb-4">⚠️</span>
+          <p>{errorMsg}</p>
+        </div>
+      ) : (
+        <TimeAttack questions={questions} />
+      )}
+    </div>
+  );
+}
+</file>
+
 <file path="CLAUDE.md">
 @AGENTS.md
 </file>
@@ -527,6 +611,178 @@ export function FocusStudy({ vocabs }: { vocabs: Vocab[] }) {
 }
 </file>
 
+<file path="components/QuizMode.tsx">
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { saveFailedWords } from '@/lib/actions';
+import { toast } from 'sonner';
+import { Trophy, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type QuizItem = {
+  id: string;
+  word: string;
+  correctMeaning: string;
+  options: string[];
+};
+
+export function QuizMode({ questions }: { questions: QuizItem[] }) {
+  const router = useRouter();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [failedIds, setFailedIds] = useState<string[]>([]);
+  const [isFinished, setIsFinished] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  if (questions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500 animate-in fade-in">
+        <span className="text-4xl mb-4">📭</span>
+        <p>Kho từ vựng chưa đủ để tạo bài test (Cần ít nhất 4 từ).</p>
+      </div>
+    );
+  }
+
+  const currentQuestion = questions[currentIndex];
+
+  const handleSelect = (option: string) => {
+    if (selectedOption !== null) return; // Chặn click nhiều lần
+    setSelectedOption(option);
+
+    if (option === currentQuestion.correctMeaning) {
+      setScore(s => s + 1);
+    } else {
+      setFailedIds(prev => [...prev, currentQuestion.id]);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(i => i + 1);
+      setSelectedOption(null);
+    } else {
+      setIsFinished(true);
+    }
+  };
+
+  const handleFinish = async () => {
+    setIsSaving(true);
+    try {
+      await saveFailedWords(failedIds);
+      if (failedIds.length > 0) {
+        toast.success(`Đã tự động chuyển ${failedIds.length} từ sai vào thư mục "Từ hay sai"`);
+      }
+      router.push('/flashcards');
+      router.refresh();
+    } catch (error) {
+      toast.error("Có lỗi khi lưu kết quả!");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Giao diện khi hoàn thành bài Test
+  if (isFinished) {
+    const isPerfect = score === questions.length;
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] space-y-6 animate-in zoom-in duration-500 text-center">
+        <Trophy className={cn("w-24 h-24", isPerfect ? "text-yellow-500" : "text-zinc-400")} />
+        <h2 className="text-5xl font-black text-notion-text tracking-tighter">
+          {isPerfect ? "Quá đỉnh!" : "Hoàn thành!"}
+        </h2>
+        <p className="text-xl text-zinc-500">
+          Mày đúng được <span className="font-bold text-zinc-900">{score}/{questions.length}</span> câu.
+        </p>
+        <button 
+          onClick={handleFinish}
+          disabled={isSaving}
+          className="mt-8 px-10 py-4 bg-zinc-900 text-white font-bold rounded-xl shadow-lg hover:bg-zinc-800 transition-all active:scale-95 disabled:opacity-50"
+        >
+          {isSaving ? "Đang lưu..." : "Lưu kết quả & Thoát"}
+        </button>
+      </div>
+    );
+  }
+
+  // Giao diện câu hỏi hiện tại
+  return (
+    <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center space-y-12 py-10 animate-in fade-in">
+      
+      {/* Thanh tiến độ */}
+      <div className="w-full space-y-4">
+        <div className="flex justify-between text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] px-2">
+          <span>Câu {currentIndex + 1} / {questions.length}</span>
+          <span>Score: {score}</span>
+        </div>
+        <div className="w-full h-2.5 bg-notion-border rounded-full overflow-hidden shadow-inner">
+          <div 
+            className="h-full bg-blue-500 transition-all duration-500 ease-out" 
+            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Thẻ câu hỏi */}
+      <div className="w-full bg-white border-2 border-notion-border rounded-[32px] p-10 md:p-16 shadow-sm text-center">
+        <h2 className="text-5xl md:text-7xl font-black text-notion-text tracking-tighter leading-tight break-words">
+          {currentQuestion.word}
+        </h2>
+      </div>
+
+      {/* Các lựa chọn đáp án */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+        {currentQuestion.options.map((option, index) => {
+          const isSelected = selectedOption === option;
+          const isCorrect = option === currentQuestion.correctMeaning;
+          const showStatus = selectedOption !== null;
+
+          let btnClass = "bg-white border-notion-border hover:bg-notion-hover text-zinc-700";
+          
+          if (showStatus) {
+            if (isCorrect) {
+              btnClass = "bg-green-100 border-green-500 text-green-800 ring-2 ring-green-500 ring-offset-2";
+            } else if (isSelected && !isCorrect) {
+              btnClass = "bg-red-100 border-red-500 text-red-800 ring-2 ring-red-500 ring-offset-2";
+            } else {
+              btnClass = "bg-white border-notion-border opacity-50";
+            }
+          }
+
+          return (
+            <button
+              key={index}
+              onClick={() => handleSelect(option)}
+              disabled={showStatus}
+              className={cn(
+                "relative flex items-center justify-center min-h-20 p-6 rounded-2xl border-2 text-lg font-medium transition-all text-left",
+                btnClass
+              )}
+            >
+              {option}
+              {showStatus && isCorrect && <CheckCircle2 className="absolute right-4 w-6 h-6 text-green-600" />}
+              {showStatus && isSelected && !isCorrect && <XCircle className="absolute right-4 w-6 h-6 text-red-600" />}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Nút Next (chỉ hiện khi đã chọn đáp án) */}
+      <div className={cn("transition-all duration-300", selectedOption ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none")}>
+        <button 
+          onClick={handleNext}
+          className="flex items-center gap-2 px-8 py-4 bg-zinc-900 text-white font-bold rounded-full shadow-lg hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+        >
+          {currentIndex < questions.length - 1 ? 'Câu tiếp theo' : 'Xem kết quả'} <ArrowRight className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="components/SaveVocabButton.tsx">
 'use client';
 
@@ -552,6 +808,176 @@ export function SaveVocabButton({ word, meaning }: { word: string, meaning: stri
     >
       <PlusCircle className="h-5 w-5" />
     </Button>
+  );
+}
+</file>
+
+<file path="components/TimeAttack.tsx">
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Trophy, Timer, Flame, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type QuizItem = {
+  id: string;
+  word: string;
+  correctMeaning: string;
+  options: string[];
+};
+
+export function TimeAttack({ questions }: { questions: QuizItem[] }) {
+  const router = useRouter();
+  const [pool, setPool] = useState<QuizItem[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<QuizItem | null>(null);
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+
+  const shufflePool = useCallback(() => {
+    return [...questions].sort(() => 0.5 - Math.random());
+  }, [questions]);
+
+  const startGame = () => {
+    const newPool = shufflePool();
+    setPool(newPool);
+    setCurrentQuestion(newPool[0]);
+    setScore(0);
+    setCombo(0);
+    setTimeLeft(60);
+    setIsPlaying(true);
+    setIsFinished(false);
+  };
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isPlaying && timeLeft > 0) {
+      timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+    } else if (timeLeft === 0 && isPlaying) {
+      setIsPlaying(false);
+      setIsFinished(true);
+    }
+    return () => clearInterval(timer);
+  }, [isPlaying, timeLeft]);
+
+  const handleSelect = (option: string) => {
+    if (!currentQuestion) return;
+
+    if (option === currentQuestion.correctMeaning) {
+      const points = 10 + combo * 2;
+      setScore((s) => s + points);
+      setCombo((c) => c + 1);
+      
+      const nextIndex = pool.findIndex(q => q.id === currentQuestion.id) + 1;
+      if (nextIndex < pool.length) {
+        setCurrentQuestion(pool[nextIndex]);
+      } else {
+        const nextPool = shufflePool();
+        setPool(nextPool);
+        setCurrentQuestion(nextPool[0]);
+      }
+    } else {
+      setCombo(0);
+      setTimeLeft((t) => Math.max(0, t - 3));
+      toast.error('Sai! Bị trừ 3 giây!', { icon: <XCircle className="text-red-500" /> });
+    }
+  };
+
+  if (questions.length < 4) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500">
+        <span className="text-4xl mb-4">📭</span>
+        <p>Cần ít nhất 4 từ để chơi chế độ này.</p>
+      </div>
+    );
+  }
+
+  if (!isPlaying && !isFinished) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] space-y-6">
+        <Timer className="w-24 h-24 text-blue-500" />
+        <h2 className="text-5xl font-black text-notion-text tracking-tighter">Time Attack</h2>
+        <p className="text-xl text-zinc-500">60 giây sinh tồn. Trả lời nhanh, giữ combo.</p>
+        <button 
+          onClick={startGame}
+          className="mt-8 px-10 py-4 bg-zinc-900 text-white font-bold rounded-xl shadow-lg hover:bg-zinc-800 transition-all active:scale-95"
+        >
+          Bắt đầu ngay
+        </button>
+      </div>
+    );
+  }
+
+  if (isFinished) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] space-y-6 animate-in zoom-in text-center">
+        <Trophy className="w-24 h-24 text-yellow-500" />
+        <h2 className="text-5xl font-black text-notion-text tracking-tighter">Hết giờ!</h2>
+        <p className="text-xl text-zinc-500">Điểm của mày: <span className="font-bold text-zinc-900">{score}</span></p>
+        <div className="flex gap-4 mt-8">
+          <button 
+            onClick={startGame}
+            className="px-8 py-4 bg-zinc-100 text-zinc-900 font-bold rounded-xl shadow-sm hover:bg-zinc-200 transition-all"
+          >
+            Chơi lại
+          </button>
+          <button 
+            onClick={() => router.push('/flashcards')}
+            className="px-8 py-4 bg-zinc-900 text-white font-bold rounded-xl shadow-lg hover:bg-zinc-800 transition-all"
+          >
+            Thoát
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center space-y-8 py-10">
+      <div className="w-full flex justify-between items-center px-4 bg-white border border-notion-border p-4 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2">
+          <Timer className={cn("w-6 h-6", timeLeft <= 10 ? "text-red-500 animate-pulse" : "text-blue-500")} />
+          <span className={cn("text-2xl font-black font-mono", timeLeft <= 10 ? "text-red-500" : "text-zinc-900")}>
+            00:{timeLeft.toString().padStart(2, '0')}
+          </span>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Score</span>
+            <span className="text-xl font-black text-zinc-900">{score}</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Combo</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xl font-black text-orange-500">{combo}</span>
+              <Flame className={cn("w-5 h-5 text-orange-500", combo >= 3 ? "fill-orange-500 animate-bounce" : "")} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full bg-white border-2 border-notion-border rounded-[32px] p-10 md:p-16 shadow-sm text-center">
+        <h2 className="text-5xl md:text-7xl font-black text-notion-text tracking-tighter leading-tight break-words">
+          {currentQuestion?.word}
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+        {currentQuestion?.options.map((option, index) => (
+          <button
+            key={index}
+            onClick={() => handleSelect(option)}
+            className="flex items-center justify-center min-h-20 p-6 rounded-2xl border-2 border-notion-border bg-white hover:bg-notion-hover text-zinc-700 text-lg font-medium transition-all text-left active:scale-95"
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 </file>
@@ -2127,99 +2553,6 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 </file>
 
-<file path="app/flashcards/page.tsx">
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import Link from 'next/link';
-import { createDeck } from '@/lib/actions';
-import { Folder, Play, Plus } from 'lucide-react';
-
-export default async function FlashcardsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) return <div>Đăng nhập đi em trai</div>;
-
-  // Lấy các Deck của user
-  const decks = await prisma.deck.findMany({
-    where: { user: { email: session.user?.email! } },
-    include: { _count: { select: { vocabularies: true } } },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  // Lấy từ vựng mồ côi (chưa nhét vào Deck nào)
-  const uncategorizedCount = await prisma.vocabulary.count({
-    where: { user: { email: session.user?.email! }, deckId: null }
-  });
-
-  return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
-      {/* Sửa lại Header của app/flashcards/page.tsx */}
-      <header className="flex justify-between items-end border-b border-notion-border pb-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
-            <span className="text-4xl">🗂️</span> Decks
-          </h1>
-          <p className="text-zinc-500 font-medium text-sm">
-            Tạo nhóm từ vựng và bắt đầu Focus Mode.
-          </p>
-        </div>
-
-        <Link href="/flashcards/manage" className="px-4 py-2 bg-white border border-notion-border hover:bg-notion-hover text-zinc-700 rounded-md text-sm font-medium transition-colors shadow-sm">
-          ⚙️ Quản lý Kho từ
-        </Link>
-      </header>
-
-      {/* Form tạo Deck nhanh */}
-      <form action={createDeck} className="flex gap-2">
-        <input 
-          name="name" 
-          placeholder="Tên nhóm mới (VD: IELTS Reading 1)..." 
-          className="flex-1 max-w-sm h-10 px-3 border border-notion-border rounded-md text-sm focus:outline-none focus:border-zinc-400"
-          required 
-        />
-        <button type="submit" className="h-10 px-4 bg-zinc-900 text-white text-sm font-medium rounded-md hover:bg-zinc-800 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Tạo Deck
-        </button>
-      </form>
-
-      {/* Grid hiện Decks */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-        
-        {/* Thư mục mặc định */}
-        <div className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col h-40">
-          <div className="flex items-start gap-3 mb-4">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Folder className="w-5 h-5" /></div>
-            <div>
-              <h3 className="font-bold text-zinc-900">Chưa phân loại</h3>
-              <p className="text-xs text-zinc-500 mt-1">{uncategorizedCount} từ vựng</p>
-            </div>
-          </div>
-          <Link href="/flashcards/focus?deck=uncategorized" className="mt-auto flex items-center justify-center gap-2 w-full h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-sm font-bold rounded-md transition-colors">
-            <Play className="w-4 h-4 fill-current" /> Bắt đầu học
-          </Link>
-        </div>
-
-        {/* Thư mục tự tạo */}
-        {decks.map(deck => (
-          <div key={deck.id} className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col h-40">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="p-2 bg-zinc-100 text-zinc-600 rounded-lg"><Folder className="w-5 h-5" /></div>
-              <div>
-                <h3 className="font-bold text-zinc-900 line-clamp-1">{deck.name}</h3>
-                <p className="text-xs text-zinc-500 mt-1">{deck._count.vocabularies} từ vựng</p>
-              </div>
-            </div>
-            <Link href={`/flashcards/focus?deck=${deck.id}`} className="mt-auto flex items-center justify-center gap-2 w-full h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-sm font-bold rounded-md transition-colors">
-              <Play className="w-4 h-4 fill-current" /> Bắt đầu học
-            </Link>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="app/globals.css">
 @import "tailwindcss";
 
@@ -2329,6 +2662,202 @@ export default async function HomePage() {
         </div>
       </section>
     </div>
+  );
+}
+</file>
+
+<file path="app/flashcards/page.tsx">
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import Link from 'next/link';
+import { createDeck } from '@/lib/actions';
+import { Folder, Play, Plus, BrainCircuit, Timer } from 'lucide-react';
+
+export default async function FlashcardsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) return <div>Đăng nhập đi em trai</div>;
+
+  // Lấy các Deck của user
+  const decks = await prisma.deck.findMany({
+    where: { user: { email: session.user?.email! } },
+    include: { _count: { select: { vocabularies: true } } },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  // Lấy từ vựng mồ côi (chưa nhét vào Deck nào)
+  const uncategorizedCount = await prisma.vocabulary.count({
+    where: { user: { email: session.user?.email! }, deckId: null }
+  });
+
+  return (
+    <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
+      <header className="flex justify-between items-end border-b border-notion-border pb-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold flex items-center gap-3 text-zinc-900">
+            <span className="text-4xl">🗂️</span> Decks
+          </h1>
+          <p className="text-zinc-500 font-medium text-sm">
+            Tạo nhóm từ vựng và bắt đầu Focus Mode, Quiz Mode hoặc Time Attack.
+          </p>
+        </div>
+
+        <Link href="/flashcards/manage" className="px-4 py-2 bg-white border border-notion-border hover:bg-notion-hover text-zinc-700 rounded-md text-sm font-medium transition-colors shadow-sm">
+          ⚙️ Quản lý Kho từ
+        </Link>
+      </header>
+
+      {/* Form tạo Deck nhanh */}
+      <form action={createDeck} className="flex gap-2">
+        <input 
+          name="name" 
+          placeholder="Tên nhóm mới (VD: IELTS Reading 1)..." 
+          className="flex-1 max-w-sm h-10 px-3 border border-notion-border rounded-md text-sm focus:outline-none focus:border-zinc-400"
+          required 
+        />
+        <button type="submit" className="h-10 px-4 bg-zinc-900 text-white text-sm font-medium rounded-md hover:bg-zinc-800 flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Tạo Deck
+        </button>
+      </form>
+
+      {/* Grid hiện Decks */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+        
+        {/* Thư mục mặc định */}
+        <div className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col min-h-[10rem]">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Folder className="w-5 h-5" /></div>
+            <div>
+              <h3 className="font-bold text-zinc-900">Chưa phân loại</h3>
+              <p className="text-xs text-zinc-500 mt-1">{uncategorizedCount} từ vựng</p>
+            </div>
+          </div>
+          <div className="mt-auto flex gap-2">
+            <Link href="/flashcards/focus?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+              <Play className="w-4 h-4 fill-current" /> Focus
+            </Link>
+            <Link href="/flashcards/quiz?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-green-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+              <BrainCircuit className="w-4 h-4" /> Quiz
+            </Link>
+            <Link href="/flashcards/time-attack?deck=uncategorized" className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-orange-500 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+              <Timer className="w-4 h-4" /> Rush
+            </Link>
+          </div>
+        </div>
+
+        {/* Thư mục tự tạo */}
+        {decks.map(deck => (
+          <div key={deck.id} className="group border border-notion-border bg-white rounded-xl p-5 hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col min-h-[10rem]">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-zinc-100 text-zinc-600 rounded-lg"><Folder className="w-5 h-5" /></div>
+              <div>
+                <h3 className="font-bold text-zinc-900 line-clamp-1">{deck.name}</h3>
+                <p className="text-xs text-zinc-500 mt-1">{deck._count.vocabularies} từ vựng</p>
+              </div>
+            </div>
+            <div className="mt-auto flex gap-2">
+              <Link href={`/flashcards/focus?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-blue-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+                <Play className="w-4 h-4 fill-current" /> Focus
+              </Link>
+              <Link href={`/flashcards/quiz?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-green-600 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+                <BrainCircuit className="w-4 h-4" /> Quiz
+              </Link>
+              <Link href={`/flashcards/time-attack?deck=${deck.id}`} className="flex-1 flex items-center justify-center gap-1 h-9 bg-zinc-100 hover:bg-orange-500 hover:text-white text-zinc-700 text-xs font-bold rounded-md transition-colors">
+                <Timer className="w-4 h-4" /> Rush
+              </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "english-mastery-hub",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+  "dev": "next dev",
+  "build": "prisma generate && next build",
+  "start": "next start",
+  "lint": "next lint"
+},
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "next": "16.2.6",
+    "next-auth": "^4.24.14",
+    "next-themes": "^0.4.6",
+    "pg": "^8.21.0",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "shadcn": "^4.7.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.6",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.3",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="app/layout.tsx">
+'use client';
+
+import { Sidebar } from "@/components/Sidebar";
+import { Providers } from "./providers";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
+import { usePathname } from 'next/navigation';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  // Kiểm tra xem có phải trang Auth không
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="flex h-screen overflow-hidden bg-notion-bg text-notion-text">
+        <Providers>
+          {!isAuthPage && <Sidebar />}
+          <main className={`flex-1 overflow-y-auto relative flex flex-col ${isAuthPage ? 'h-full' : ''}`}>
+            {!isAuthPage && (
+              <div className="h-12 shrink-0 flex items-center px-8 text-sm text-zinc-500 border-b border-notion-border">
+                <span>English Mastery Hub</span>
+              </div>
+            )}
+            
+            {/* Nếu là trang Login thì không có padding để nó căn giữa chuẩn */}
+            <div className={`${isAuthPage ? 'h-full w-full' : 'w-full px-8 md:px-16 py-10'}`}>
+              {children}
+            </div>
+          </main>
+        </Providers>
+        <Toaster position="bottom-right" richColors />
+      </body>
+    </html>
   );
 }
 </file>
@@ -2460,93 +2989,81 @@ export async function bulkUpdateVocabDeck(vocabIds: string[], deckId: string | n
   revalidatePath('/flashcards/manage');
   revalidatePath('/flashcards');
 }
-</file>
+export async function generateQuizData(deckId?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error('Unauthorized');
 
-<file path="package.json">
-{
-  "name": "english-mastery-hub",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-  "dev": "next dev",
-  "build": "prisma generate && next build",
-  "start": "next start",
-  "lint": "next lint"
-},
-  "dependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
-    "bcryptjs": "^3.0.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.16.0",
-    "next": "16.2.6",
-    "next-auth": "^4.24.14",
-    "next-themes": "^0.4.6",
-    "pg": "^8.21.0",
-    "radix-ui": "^1.4.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "shadcn": "^4.7.0",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
-    "@types/pg": "^8.20.0",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.6",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5",
-    "prettier": "^3.8.3",
-    "prisma": "^7.8.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) throw new Error('User not found');
+
+  // Lấy toàn bộ từ vựng để làm kho đáp án nhiễu
+  const allVocabs = await prisma.vocabulary.findMany({
+    where: { userId: user.id },
+  });
+
+  if (allVocabs.length < 4) {
+    throw new Error('Cần ít nhất 4 từ vựng trong kho để tạo trắc nghiệm');
   }
+
+  // Lọc từ vựng theo deck được chọn (nếu có)
+  let targetVocabs = allVocabs;
+  if (deckId && deckId !== 'uncategorized') {
+    targetVocabs = allVocabs.filter(v => v.deckId === deckId);
+  } else if (deckId === 'uncategorized') {
+    targetVocabs = allVocabs.filter(v => v.deckId === null);
+  }
+
+  // Trộn lên và bốc ra 10 câu hỏi
+  const shuffledTargets = targetVocabs.sort(() => 0.5 - Math.random()).slice(0, 10);
+
+  const quizData = shuffledTargets.map(target => {
+    // Bốc 3 nghĩa sai ngẫu nhiên
+    const wrongOptions = allVocabs
+      .filter(v => v.id !== target.id)
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3)
+      .map(v => v.meaning);
+
+    // Ghép đáp án đúng vào và trộn ngẫu nhiên 4 đáp án
+    const options = [...wrongOptions, target.meaning].sort(() => 0.5 - Math.random());
+
+    return {
+      id: target.id,
+      word: target.word,
+      correctMeaning: target.meaning,
+      options,
+    };
+  });
+
+  return quizData;
 }
-</file>
 
-<file path="app/layout.tsx">
-'use client';
+export async function saveFailedWords(vocabIds: string[]) {
+  if (vocabIds.length === 0) return;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return;
 
-import { Sidebar } from "@/components/Sidebar";
-import { Providers } from "./providers";
-import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
-import { usePathname } from 'next/navigation';
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) return;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  // Kiểm tra xem có phải trang Auth không
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  // Tìm hoặc tự tạo thư mục "Từ hay sai"
+  let reviewDeck = await prisma.deck.findFirst({
+    where: { userId: user.id, name: 'Từ hay sai' },
+  });
 
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="flex h-screen overflow-hidden bg-notion-bg text-notion-text">
-        <Providers>
-          {!isAuthPage && <Sidebar />}
-          <main className={`flex-1 overflow-y-auto relative flex flex-col ${isAuthPage ? 'h-full' : ''}`}>
-            {!isAuthPage && (
-              <div className="h-12 shrink-0 flex items-center px-8 text-sm text-zinc-500 border-b border-notion-border">
-                <span>English Mastery Hub</span>
-              </div>
-            )}
-            
-            {/* Nếu là trang Login thì không có padding để nó căn giữa chuẩn */}
-            <div className={`${isAuthPage ? 'h-full w-full' : 'w-full px-8 md:px-16 py-10'}`}>
-              {children}
-            </div>
-          </main>
-        </Providers>
-        <Toaster position="bottom-right" richColors />
-      </body>
-    </html>
-  );
+  if (!reviewDeck) {
+    reviewDeck = await prisma.deck.create({
+      data: { name: 'Từ hay sai', userId: user.id },
+    });
+  }
+
+  // Cập nhật các từ bị sai vào thư mục này để ôn lại sau
+  await prisma.vocabulary.updateMany({
+    where: { id: { in: vocabIds }, userId: user.id },
+    data: { deckId: reviewDeck.id },
+  });
+
+  revalidatePath('/flashcards');
 }
 </file>
 

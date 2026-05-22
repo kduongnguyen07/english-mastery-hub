@@ -197,6 +197,23 @@ export async function saveFailedWords(vocabIds: string[]) {
     where: { id: { in: vocabIds }, userId: user.id },
     data: { deckId: reviewDeck.id },
   });
-
+  
   revalidatePath('/flashcards');
+}
+/**
+ * Deletes a lesson and revalidates the vault path.
+ * @param {string} id - The lesson ID.
+ */
+export async function deleteLesson(id: string) {
+  const session = await getServerSession(authOptions);
+  // Chỉ ADMIN mới có quyền xoá bài học
+  if ((session?.user as any)?.role !== 'ADMIN') {
+    throw new Error("Mày đéo có quyền xoá bài học này!");
+  }
+
+  await prisma.lesson.delete({
+    where: { id },
+  });
+
+  revalidatePath('/vault');
 }
