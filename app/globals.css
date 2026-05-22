@@ -6,6 +6,10 @@
   --color-notion-hover: var(--notion-hover);
   --color-notion-border: var(--notion-border);
   --color-notion-text: var(--notion-text);
+  
+  /* MAP FONT CHỮ VÀO ĐÂY */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-lora), ui-serif, Georgia, serif;
 }
 
 :root {
@@ -25,18 +29,21 @@
 }
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-sans);
   color: var(--notion-text);
   background-color: var(--notion-bg);
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* Fix lỗi lật thẻ 3D */
+/* Ép các thẻ Heading dùng Font Serif (Có chân) cho giống Notion */
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+}
+
 .perspective-1000 { perspective: 1000px; }
 .preserve-3d { transform-style: preserve-3d; }
 .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .rotate-y-180 { transform: rotateY(180deg); }
 
-/* Scrollbar đẹp */
-::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: var(--notion-border); border-radius: 10px; }
