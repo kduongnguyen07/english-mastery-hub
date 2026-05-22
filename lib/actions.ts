@@ -7,13 +7,36 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
+export async function createExam(formData: FormData) {
+  const title = formData.get('title') as string;
+  const type = formData.get('type') as 'IELTS' | 'HSG';
+  await prisma.exam.create({ data: { title, type } });
+  revalidatePath('/vault');
+}
+
+export async function deleteExam(id: string) {
+  const session = await getServerSession(authOptions);
+  if ((session?.user as any)?.role !== 'ADMIN') throw new Error("Mày đéo có quyền!");
+  await prisma.exam.delete({ where: { id } });
+  revalidatePath('/vault');
+}
+
 export async function createLesson(formData: FormData) {
   const title = formData.get('title') as string;
   const content = formData.get('content') as string;
   const type = formData.get('type') as 'IELTS' | 'HSG';
   const category = formData.get('category') as string;
+  const examId = formData.get('examId') as string;
 
-  await prisma.lesson.create({ data: { title, content, type, category } });
+  await prisma.lesson.create({ 
+    data: { 
+      title, 
+      content, 
+      type, 
+      category,
+      examId: examId === '' ? null : examId
+    } 
+  });
   revalidatePath('/vault');
   redirect('/vault');
 }
@@ -23,10 +46,17 @@ export async function updateLesson(id: string, formData: FormData) {
   const content = formData.get('content') as string;
   const type = formData.get('type') as 'IELTS' | 'HSG';
   const category = formData.get('category') as string;
+  const examId = formData.get('examId') as string;
 
   await prisma.lesson.update({
     where: { id },
-    data: { title, content, type, category },
+    data: { 
+      title, 
+      content, 
+      type, 
+      category,
+      examId: examId === '' ? null : examId
+    },
   });
 
   revalidatePath(`/lessons/${id}`);
@@ -36,7 +66,6 @@ export async function updateLesson(id: string, formData: FormData) {
 
 export async function saveVocabulary(word: string, meaning: string) {
   const session = await getServerSession(authOptions);
-  // FIX: Chặn lỗi session.user is possibly undefined
   if (!session?.user?.email) throw new Error("Chưa đăng nhập");
   
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
@@ -66,7 +95,6 @@ export async function searchLocalVault(query: string) {
     where: { OR: [{ title: { contains: query, mode: 'insensitive' } }, { content: { contains: query, mode: 'insensitive' } }] },
     take: 5,
   });
-  // FIX: Khai báo rõ l là bài học, line là string
   return lessons.map((l: any) => ({
     id: l.id,
     title: l.title,
@@ -85,6 +113,7 @@ export async function createDeck(formData: FormData) {
   await prisma.deck.create({ data: { name, userId: user.id } });
   revalidatePath('/flashcards');
 }
+
 export async function updateVocabDeck(vocabId: string, deckId: string | null) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("Unauthorized");
@@ -99,7 +128,6 @@ export async function updateVocabDeck(vocabId: string, deckId: string | null) {
 export async function deleteDeck(deckId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("Unauthorized");
-  // Chuyển các từ trong Deck này về "Chưa phân loại" trước khi xóa
   await prisma.vocabulary.updateMany({
     where: { deckId, user: { email: session.user.email } },
     data: { deckId: null }
@@ -109,6 +137,7 @@ export async function deleteDeck(deckId: string) {
   });
   revalidatePath('/flashcards');
 }
+
 export async function bulkUpdateVocabDeck(vocabIds: string[], deckId: string | null) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("Unauthorized");
@@ -124,6 +153,7 @@ export async function bulkUpdateVocabDeck(vocabIds: string[], deckId: string | n
   revalidatePath('/flashcards/manage');
   revalidatePath('/flashcards');
 }
+
 export async function generateQuizData(deckId?: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error('Unauthorized');
@@ -131,7 +161,6 @@ export async function generateQuizData(deckId?: string) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) throw new Error('User not found');
 
-  // Lấy toàn bộ từ vựng để làm kho đáp án nhiễu
   const allVocabs = await prisma.vocabulary.findMany({
     where: { userId: user.id },
   });
@@ -140,7 +169,6 @@ export async function generateQuizData(deckId?: string) {
     throw new Error('Cần ít nhất 4 từ vựng trong kho để tạo trắc nghiệm');
   }
 
-  // Lọc từ vựng theo deck được chọn (nếu có)
   let targetVocabs = allVocabs;
   if (deckId && deckId !== 'uncategorized') {
     targetVocabs = allVocabs.filter(v => v.deckId === deckId);
@@ -148,18 +176,15 @@ export async function generateQuizData(deckId?: string) {
     targetVocabs = allVocabs.filter(v => v.deckId === null);
   }
 
-  // Trộn lên và bốc ra 10 câu hỏi
   const shuffledTargets = targetVocabs.sort(() => 0.5 - Math.random()).slice(0, 10);
 
   const quizData = shuffledTargets.map(target => {
-    // Bốc 3 nghĩa sai ngẫu nhiên
     const wrongOptions = allVocabs
       .filter(v => v.id !== target.id)
       .sort(() => 0.5 - Math.random())
       .slice(0, 3)
       .map(v => v.meaning);
 
-    // Ghép đáp án đúng vào và trộn ngẫu nhiên 4 đáp án
     const options = [...wrongOptions, target.meaning].sort(() => 0.5 - Math.random());
 
     return {
@@ -181,7 +206,6 @@ export async function saveFailedWords(vocabIds: string[]) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return;
 
-  // Tìm hoặc tự tạo thư mục "Từ hay sai"
   let reviewDeck = await prisma.deck.findFirst({
     where: { userId: user.id, name: 'Từ hay sai' },
   });
@@ -192,7 +216,6 @@ export async function saveFailedWords(vocabIds: string[]) {
     });
   }
 
-  // Cập nhật các từ bị sai vào thư mục này để ôn lại sau
   await prisma.vocabulary.updateMany({
     where: { id: { in: vocabIds }, userId: user.id },
     data: { deckId: reviewDeck.id },
@@ -200,13 +223,9 @@ export async function saveFailedWords(vocabIds: string[]) {
   
   revalidatePath('/flashcards');
 }
-/**
- * Deletes a lesson and revalidates the vault path.
- * @param {string} id - The lesson ID.
- */
+
 export async function deleteLesson(id: string) {
   const session = await getServerSession(authOptions);
-  // Chỉ ADMIN mới có quyền xoá bài học
   if ((session?.user as any)?.role !== 'ADMIN') {
     throw new Error("Mày đéo có quyền xoá bài học này!");
   }

@@ -1,6 +1,6 @@
 // 1. Cấu hình công cụ
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
@@ -16,13 +16,24 @@ model User {
   password     String 
   role         Role         @default(STUDENT)
   vocabularies Vocabulary[]
-  decks        Deck[]       // Mối quan hệ: User tạo nhiều Decks
+  decks        Deck[]       
   createdAt    DateTime     @default(now())
 }
 
 enum Role {
   ADMIN
   STUDENT
+}
+
+// BẢNG MỚI: Đề thi (Nhóm bài học)
+model Exam {
+  id        String     @id @default(cuid())
+  title     String     
+  type      CourseType 
+  lessons   Lesson[]   
+  createdAt DateTime   @default(now())
+
+  @@index([createdAt(sort: Desc)])
 }
 
 // Bảng 2: Bài học
@@ -32,6 +43,10 @@ model Lesson {
   content   String     
   type      CourseType 
   category  String     
+  
+  examId    String?    
+  exam      Exam?      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  
   createdAt DateTime   @default(now())
 
   @@index([createdAt(sort: Desc)])
@@ -64,7 +79,6 @@ model Vocabulary {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   
-  // ĐÂY CHÍNH LÀ DÒNG BỊ LỖI LÚC NÃY, TAO GHI ĐẦY ĐỦ RỒI ĐÓ
   deckId    String?  
   deck      Deck?    @relation(fields: [deckId], references: [id]) 
   
